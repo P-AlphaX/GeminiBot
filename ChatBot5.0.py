@@ -10,7 +10,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 # 1. CONFIGURACIÓN DE PÁGINA
 # ==========================================
 
-APP_VERSION = "v5.0 - Ultimate Stable"
+APP_VERSION = "v5.0 - Integrated Toolbar Edition"
 
 st.set_page_config(
     page_title="Friday - Tu Tutora Virtual",
@@ -64,12 +64,12 @@ SYSTEM_PROMPTS = {
 }
 
 # ==========================================
-# 4. COMPONENTE DE VOZ LIMPIO E INDEPENDIENTE
+# 4. COMPONENTE DE VOZ INTEGRADO
 # ==========================================
 
 VOICE_HTML = """
-<div style="display: flex; align-items: center; height: 38px;">
-  <button id="mic-btn" onclick="toggleVoice()" style="background: transparent; border: 1px solid rgba(150,150,150,0.4); border-radius: 6px; padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; color: inherit; width: 100%; justify-content: center;">
+<div style="display: flex; align-items: center; justify-content: flex-end; height: 38px;">
+  <button id="mic-btn" onclick="toggleVoice()" style="background: transparent; border: 1px solid rgba(150,150,150,0.4); border-radius: 6px; padding: 6px 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; color: inherit;">
     🎤 <span id="mic-txt">Dictar voz</span>
   </button>
 </div>
@@ -231,22 +231,23 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # ==========================================
-# 8. BARRA INFERIOR DE HERRAMIENTAS (ALINEADA AL CHAT)
+# 8. BARRA DE HERRAMIENTAS INFERIOR (JUNTO AL CHAT)
 # ==========================================
 
-st.markdown("---")
+st.markdown("")
 
-cols = st.columns([3, 1])
+# Contenedor compacto en columnas justo encima de la barra de escritura
+col_file, col_voice = st.columns([3, 1])
 
-with cols[0]:
+with col_file:
     uploaded_file = st.file_uploader(
         "Adjuntar archivo",
         type=["txt", "py", "json", "csv", "md", "pdf"],
         label_visibility="collapsed"
     )
 
-with cols[1]:
-    components.html(VOICE_HTML, height=40)
+with col_voice:
+    components.html(VOICE_HTML, height=45)
 
 file_context_text = ""
 if uploaded_file is not None:
@@ -260,7 +261,7 @@ if uploaded_file is not None:
         else:
             file_context_text = file_bytes.decode("utf-8", errors="ignore")
         
-        st.caption(f"Archivo adjunto activo: **{uploaded_file.name}**")
+        st.caption(f"📎 Archivo adjunto activo: **{uploaded_file.name}**")
     except Exception as e:
         st.error(f"Error al leer el archivo: {e}")
 
