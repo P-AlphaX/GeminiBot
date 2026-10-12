@@ -10,7 +10,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 # 1. CONFIGURACIÓN DE PÁGINA
 # ==========================================
 
-APP_VERSION = "v5.0 - Clean & Stable Edition"
+APP_VERSION = "v5.0 - Ultimate Stable"
 
 st.set_page_config(
     page_title="Friday - Tu Tutora Virtual",
@@ -64,106 +64,13 @@ SYSTEM_PROMPTS = {
 }
 
 # ==========================================
-# 4. ESTILOS CSS SEGUROS (SIN ROMPER ICONOS)
+# 4. COMPONENTE DE VOZ LIMPIO E INDEPENDIENTE
 # ==========================================
 
-def load_custom_css(theme: str):
-    if theme == "Oscuro (Deep Navy)":
-        bg_main = "#0F172A"
-        bg_sidebar = "#1E293B"
-        text_color = "#F1F5F9"
-        border_color = "#334155"
-        accent_blue = "#38BDF8"
-    elif theme == "Claro (Soft Blue)":
-        bg_main = "#F8FAFC"
-        bg_sidebar = "#F1F5F9"
-        text_color = "#0F172A"
-        border_color = "#CBD5E1"
-        accent_blue = "#0284C7"
-    else:  # Predeterminado del sistema
-        bg_main = "transparent"
-        bg_sidebar = "transparent"
-        text_color = "inherit"
-        border_color = "#CBD5E1"
-        accent_blue = "#0284C7"
-
-    # CSS limpio y acotado para evitar alterar componentes internos de Streamlit
-    css_code = f"""<style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
-
-    /* Aplicación general de fuente Montserrat de forma segura */
-    html, body, .stApp, p, span, label, h1, h2, h3, h4, h5, h6 {{
-        font-family: 'Montserrat', sans-serif !important;
-    }}
-    
-    .stApp {{
-        background-color: {bg_main};
-        color: {text_color};
-    }}
-    
-    section[data-testid="stSidebar"] {{
-        background-color: {bg_sidebar};
-        border-right: 1px solid {border_color};
-    }}
-    
-    p, span, label, .stMarkdown, .stText, div[data-testid="stMarkdownContainer"] {{
-        color: {text_color} !important;
-    }}
-    
-    h1, h2, h3, h4, h5, h6 {{
-        color: {accent_blue} !important;
-        font-weight: 600 !important;
-    }}
-
-    .stButton button {{
-        background-color: {accent_blue};
-        color: white;
-        border-radius: 6px;
-        border: none;
-        font-weight: 500;
-    }}
-    </style>"""
-
-    if hasattr(st, "html"):
-        st.html(css_code)
-    else:
-        st.markdown(css_code, unsafe_allow_html=True)
-
-# ==========================================
-# 5. COMPONENTE DE VOZ INDEPENDIENTE Y ESTABLE
-# ==========================================
-
-VOICE_TOOLBAR_HTML = """
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500&display=swap');
-  body { margin:0; padding:0; background: transparent; font-family: 'Montserrat', sans-serif; }
-  .v-wrap { display: flex; align-items: center; height: 38px; }
-  .v-btn {
-    background: transparent;
-    border: 1px solid #0284C7;
-    border-radius: 6px;
-    padding: 6px 14px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    color: #0284C7;
-    width: 100%;
-    justify-content: center;
-  }
-  .v-btn.active {
-    background-color: #16A34A;
-    color: white;
-    border-color: #16A34A;
-  }
-  svg { width: 14px; height: 14px; fill: currentColor; }
-</style>
-<div class="v-wrap">
-  <button id="mic-btn" class="v-btn" onclick="toggleVoice()">
-    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20h2v-3.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
-    <span id="mic-txt">Dictar voz</span>
+VOICE_HTML = """
+<div style="display: flex; align-items: center; height: 38px;">
+  <button id="mic-btn" onclick="toggleVoice()" style="background: transparent; border: 1px solid rgba(150,150,150,0.4); border-radius: 6px; padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; color: inherit; width: 100%; justify-content: center;">
+    🎤 <span id="mic-txt">Dictar voz</span>
   </button>
 </div>
 <script>
@@ -172,9 +79,10 @@ VOICE_TOOLBAR_HTML = """
   let rec = null;
   let active = false;
 
-  function getTA() {
-    return P.document.querySelector('textarea[data-testid="stChatInputTextArea"]');
+  function getTA() { 
+    return P.document.querySelector('textarea[data-testid="stChatInputTextArea"]'); 
   }
+  
   function setVal(t) {
     const ta = getTA();
     if (!ta) return;
@@ -184,33 +92,34 @@ VOICE_TOOLBAR_HTML = """
   }
 
   function toggleVoice() {
-    if (!SR) {
-      alert("Navegador no compatible con voz. Usa Google Chrome o Microsoft Edge.");
-      return;
+    if (!SR) { 
+      alert("Tu navegador no soporta reconocimiento de voz. Usa Google Chrome o Microsoft Edge."); 
+      return; 
     }
     const btn = document.getElementById("mic-btn");
     const txt = document.getElementById("mic-txt");
-
-    if (active) {
-      rec.stop();
-      return;
+    
+    if (active) { 
+      rec.stop(); 
+      return; 
     }
-
+    
     rec = new SR();
     rec.lang = "es-ES";
     rec.continuous = true;
     rec.interimResults = true;
-
+    
     let base = getTA() ? getTA().value + " " : "";
-
-    rec.onstart = () => {
-      active = true;
-      btn.classList.add("active");
-      txt.textContent = "Detener";
+    
+    rec.onstart = () => { 
+      active = true; 
+      btn.style.borderColor = "#16A34A"; 
+      btn.style.color = "#16A34A";
+      txt.textContent = "Escuchando..."; 
     };
-
+    
     rec.onresult = (e) => {
-      let interim = "";
+      let interim = ""; 
       let finalStr = "";
       for (let i = e.resultIndex; i < e.results.length; ++i) {
         if (e.results[i].isFinal) finalStr += e.results[i][0].transcript;
@@ -219,35 +128,26 @@ VOICE_TOOLBAR_HTML = """
       if (finalStr) base += finalStr + " ";
       setVal((base + interim).trim());
     };
-
-    rec.onend = () => {
-      active = false;
-      btn.classList.remove("active");
-      txt.textContent = "Dictar voz";
+    
+    rec.onend = () => { 
+      active = false; 
+      btn.style.borderColor = "rgba(150,150,150,0.4)"; 
+      btn.style.color = "inherit";
+      txt.textContent = "Dictar voz"; 
     };
-
+    
     try { rec.start(); } catch(ex) { console.error(ex); }
   }
 </script>
 """
 
 # ==========================================
-# 6. PANEL LATERAL DE CONFIGURACIÓN
+# 5. PANEL DE CONTROL (BARRA LATERAL)
 # ==========================================
 
 with st.sidebar:
     st.title("Panel de Control")
     st.caption(f"Versión: {APP_VERSION}")
-    st.divider()
-
-    st.subheader("Apariencia")
-    theme_choice = st.selectbox(
-        "Tema de interfaz",
-        ["Predeterminado del sistema", "Claro (Soft Blue)", "Oscuro (Deep Navy)"],
-        index=0
-    )
-    load_custom_css(theme_choice)
-
     st.divider()
 
     st.subheader("Configuración de IA")
@@ -272,7 +172,7 @@ with st.sidebar:
             loaded_msgs = json.load(uploaded_history)
             if isinstance(loaded_msgs, list):
                 st.session_state.messages = loaded_msgs
-                st.success("Historial recuperado exitosamente.")
+                st.success("Historial recuperado con éxito.")
                 time.sleep(1)
                 st.rerun()
         except Exception as e:
@@ -280,19 +180,17 @@ with st.sidebar:
 
     st.divider()
 
-    col_clear, col_export = st.columns(2)
-    with col_clear:
-        if st.button("Limpiar", use_container_width=True):
-            st.session_state.messages = []
-            st.rerun()
+    if st.button("Limpiar conversación", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
 
     msg_count = len(st.session_state.get("messages", []))
-    st.metric("Mensajes", msg_count)
+    st.metric("Mensajes en sesión", msg_count)
 
     if msg_count > 0:
         export_data = json.dumps(st.session_state.get("messages", []), indent=2, ensure_ascii=False)
         st.download_button(
-            label="Exportar JSON",
+            label="Exportar Chat (JSON)",
             data=export_data,
             file_name="historial_friday.json",
             mime="application/json",
@@ -300,7 +198,7 @@ with st.sidebar:
         )
 
 # ==========================================
-# 7. INICIALIZACIÓN DEL MODELO CACHEADO
+# 6. INICIALIZACIÓN DEL MODELO CACHEADO
 # ==========================================
 
 @st.cache_resource
@@ -315,7 +213,7 @@ def get_llm(model_name: str, temp: float):
 llm = get_llm(selected_model, temperature)
 
 # ==========================================
-# 8. ENCABEZADO Y CHAT
+# 7. ENCABEZADO Y CHAT
 # ==========================================
 
 st.title("Friday, tu tutora virtual")
@@ -333,22 +231,22 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # ==========================================
-# 9. BARRA SUPERIOR DE ENTRADA (ARCHIVOS Y VOZ)
+# 8. BARRA INFERIOR DE HERRAMIENTAS (ALINEADA AL CHAT)
 # ==========================================
 
 st.markdown("---")
 
-col_file, col_voice = st.columns([3, 1])
+cols = st.columns([3, 1])
 
-with col_file:
+with cols[0]:
     uploaded_file = st.file_uploader(
-        "Adjuntar archivo (TXT, Python, JSON, CSV, PDF)",
+        "Adjuntar archivo",
         type=["txt", "py", "json", "csv", "md", "pdf"],
         label_visibility="collapsed"
     )
 
-with col_voice:
-    components.html(VOICE_TOOLBAR_HTML, height=42)
+with cols[1]:
+    components.html(VOICE_HTML, height=40)
 
 file_context_text = ""
 if uploaded_file is not None:
@@ -362,12 +260,12 @@ if uploaded_file is not None:
         else:
             file_context_text = file_bytes.decode("utf-8", errors="ignore")
         
-        st.caption(f"📎 Archivo adjunto activo: **{uploaded_file.name}**")
+        st.caption(f"Archivo adjunto activo: **{uploaded_file.name}**")
     except Exception as e:
         st.error(f"Error al leer el archivo: {e}")
 
 # ==========================================
-# 10. ENTRADA DE CHAT Y PROCESAMIENTO
+# 9. ENTRADA DE CHAT Y PROCESAMIENTO
 # ==========================================
 
 if prompt := st.chat_input("Escribe tu consulta aquí..."):
