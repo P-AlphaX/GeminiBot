@@ -7,10 +7,10 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 # ==========================================
-# 1. CONFIGURACIÓN DE PÁGINA
+# 1. METADATOS Y CONFIGURACIÓN DE PÁGINA
 # ==========================================
 
-APP_VERSION = "v7.0 - Professional Clean"
+APP_VERSION = "v6.1 - Clean Professional UI"
 
 st.set_page_config(
     page_title="Friday - Tutor Virtual",
@@ -32,7 +32,7 @@ except KeyError:
     st.stop()
 
 # ==========================================
-# 3. PROMPTS DEL SISTEMA
+# 3. PROMPTS DEL SISTEMA (MODOS DE TUTORÍA)
 # ==========================================
 
 SYSTEM_PROMPTS = {
@@ -64,7 +64,7 @@ SYSTEM_PROMPTS = {
 }
 
 # ==========================================
-# 4. ESTILOS CSS Y SOPORTE DE TEMAS (CLARO / OSCURO)
+# 4. INYECCIÓN CORRECTA DE CSS Y TEMA
 # ==========================================
 
 def load_custom_css(theme: str):
@@ -74,24 +74,20 @@ def load_custom_css(theme: str):
         text_color = "#F1F5F9"
         border_color = "#334155"
         accent_blue = "#38BDF8"
-        card_bg = "#1E293B"
     elif theme == "Claro (Soft Blue)":
         bg_main = "#F8FAFC"
         bg_sidebar = "#F1F5F9"
-        text_color = "#0F172A"
+        text_color = "#1E293B"
         border_color = "#CBD5E1"
         accent_blue = "#0284C7"
-        card_bg = "#FFFFFF"
     else:  # Predeterminado del sistema
         bg_main = "transparent"
         bg_sidebar = "transparent"
         text_color = "inherit"
         border_color = "#CBD5E1"
         accent_blue = "#0284C7"
-        card_bg = "rgba(2, 132, 199, 0.03)"
 
-    css_code = f"""
-    <style>
+    css_code = f"""<style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
 
     html, body, [class*="st-"], input, textarea, button {{
@@ -123,53 +119,58 @@ def load_custom_css(theme: str):
     .stButton button:hover {{
         background-color: #0369A1;
     }}
-    /* Corrección visual para los selectbox y file_uploaders */
-    div[data-baseweb="select"] > div {{
-        background-color: {card_bg} !important;
-        color: {text_color} !important;
-        border-color: {border_color} !important;
+    /* Ocultar margen superior del file uploader para compacitar la barra */
+    div[data-testid="stFileUploader"] {{
+        padding-top: 0px;
+        padding-bottom: 0px;
     }}
-    </style>
-    """
-    st.markdown(css_code, unsafe_allow_html=True)
+    </style>"""
+
+    # Uso directo de st.html para inyección segura de CSS sin escapado de texto
+    if hasattr(st, "html"):
+        st.html(css_code)
+    else:
+        st.markdown(css_code, unsafe_allow_html=True)
 
 # ==========================================
-# 5. COMPONENTE DE DICTADO POR VOZ (ESTABILIZADO)
+# 5. COMPONENTE DE DICTADO POR VOZ CORREGIDO
 # ==========================================
 
 VOICE_TOOLBAR_HTML = """
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&display=swap');
   body { margin:0; padding:0; background: transparent; font-family: 'Montserrat', sans-serif; }
-  .voice-wrap {
+  .voice-container {
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-top: 2px;
+    margin-bottom: 2px;
   }
-  .v-btn {
+  .voice-btn {
     background: transparent;
     border: 1px solid #CBD5E1;
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 6px 14px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     font-size: 13px;
     font-weight: 500;
     color: #0284C7;
     transition: all 0.2s;
   }
-  .v-btn:hover {
+  .voice-btn:hover {
     background-color: rgba(2, 132, 199, 0.08);
     border-color: #0284C7;
   }
-  .v-btn.active {
+  .voice-btn.active {
     background-color: #16A34A;
     color: white;
     border-color: #16A34A;
   }
-  .v-status {
+  .voice-status {
     font-size: 12px;
     opacity: 0.8;
     font-style: italic;
@@ -177,92 +178,99 @@ VOICE_TOOLBAR_HTML = """
   }
   svg { width: 14px; height: 14px; fill: currentColor; }
 </style>
-<div class="voice-wrap">
-  <button id="mic-btn" class="v-btn" onclick="toggleVoice()">
+<div class="voice-container">
+  <button id="mic-btn" class="voice-btn" onclick="toggleDictation()" title="Dictar mensaje por voz">
     <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20h2v-3.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
-    <span id="mic-txt">Dictar por voz</span>
+    <span id="mic-text">Dictar por voz</span>
   </button>
-  <span id="mic-st" class="v-status"></span>
+  <span id="mic-status" class="voice-status"></span>
 </div>
 <script>
   const P = window.parent;
   const SR = P.SpeechRecognition || P.webkitSpeechRecognition || window.SpeechRecognition || window.webkitSpeechRecognition;
-  let rec = null;
-  let active = false;
+  let recognition = null;
+  let isListening = false;
 
-  function getTA() {
+  function getInput() {
     return P.document.querySelector('textarea[data-testid="stChatInputTextArea"]');
   }
-  function setVal(t) {
-    const ta = getTA();
+  function setInput(text) {
+    const ta = getInput();
     if (!ta) return;
     const setter = Object.getOwnPropertyDescriptor(P.HTMLTextAreaElement.prototype, "value").set;
-    setter.call(ta, t);
+    setter.call(ta, text);
     ta.dispatchEvent(new P.Event("input", { bubbles: true }));
   }
 
-  function toggleVoice() {
+  function toggleDictation() {
     if (!SR) {
-      alert("Su navegador no soporta dictado por voz. Utilice Google Chrome o Microsoft Edge.");
+      alert("El navegador no soporta reconocimiento de voz. Utilice Google Chrome o Microsoft Edge.");
       return;
     }
     const btn = document.getElementById("mic-btn");
-    const txt = document.getElementById("mic-txt");
-    const st = document.getElementById("mic-st");
+    const txt = document.getElementById("mic-text");
+    const status = document.getElementById("mic-status");
 
-    if (active) {
-      rec.stop();
+    if (isListening) {
+      recognition.stop();
       return;
     }
 
-    rec = new SR();
-    rec.lang = "es-ES";
-    rec.continuous = true;
-    rec.interimResults = true;
+    recognition = new SR();
+    recognition.lang = "es-ES";
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
-    let base = getTA() ? getTA().value + " " : "";
+    let accumulated = getInput() ? getInput().value + " " : "";
 
-    rec.onstart = () => {
-      active = true;
+    recognition.onstart = () => {
+      isListening = true;
       btn.classList.add("active");
-      txt.textContent = "Detener";
-      st.textContent = "Escuchando...";
+      txt.textContent = "Detener voz";
+      status.textContent = "Escuchando...";
     };
 
-    rec.onresult = (e) => {
+    recognition.onresult = (event) => {
       let interim = "";
-      let finalStr = "";
-      for (let i = e.resultIndex; i < e.results.length; ++i) {
-        if (e.results[i].isFinal) finalStr += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
+      let finalChunk = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalChunk += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
       }
-      if (finalStr) base += finalStr + " ";
-      setVal((base + interim).trim());
+      if (finalChunk) {
+        accumulated += finalChunk + " ";
+      }
+      setInput((accumulated + interim).trim());
     };
 
-    rec.onerror = (err) => {
-      if (err.error !== "no-speech") {
-        st.textContent = "Error: " + err.error;
-      }
+    recognition.onerror = (e) => {
+      status.textContent = "Error: " + e.error;
     };
 
-    rec.onend = () => {
-      active = false;
+    recognition.onend = () => {
+      isListening = false;
       btn.classList.remove("active");
       txt.textContent = "Dictar por voz";
-      st.textContent = "";
+      status.textContent = "";
     };
 
-    try { rec.start(); } catch(ex) { console.error(ex); }
+    try {
+      recognition.start();
+    } catch(err) {
+      console.error(err);
+    }
   }
 </script>
 """
 
-def render_voice_control():
-    components.html(VOICE_TOOLBAR_HTML, height=38)
+def voice_toolbar():
+    components.html(VOICE_TOOLBAR_HTML, height=42)
 
 # ==========================================
-# 6. PANEL DE CONTROL (BARRA LATERAL)
+# 6. CONFIGURACIÓN DE LA BARRA LATERAL
 # ==========================================
 
 with st.sidebar:
@@ -270,6 +278,7 @@ with st.sidebar:
     st.caption(f"Versión: {APP_VERSION}")
     st.divider()
 
+    # --- Tema ---
     st.subheader("Apariencia")
     theme_choice = st.selectbox(
         "Tema de interfaz",
@@ -280,6 +289,7 @@ with st.sidebar:
 
     st.divider()
 
+    # --- Parámetros de Modelo ---
     st.subheader("Configuración de IA")
     selected_model = st.selectbox(
         "Modelo",
@@ -291,11 +301,12 @@ with st.sidebar:
 
     st.divider()
 
-    st.subheader("Historial")
+    # --- Cargar Historial Previo ---
+    st.subheader("Historial de Conversación")
     uploaded_history = st.file_uploader(
         "Cargar archivo JSON previo",
         type=["json"],
-        help="Recupera una sesión anterior."
+        help="Sube un archivo de exportación anterior para recuperar la sesión."
     )
     if uploaded_history is not None:
         try:
@@ -310,6 +321,7 @@ with st.sidebar:
 
     st.divider()
 
+    # --- Acciones ---
     col_clear, col_export = st.columns(2)
     with col_clear:
         if st.button("Limpiar", use_container_width=True):
@@ -367,22 +379,22 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # ==========================================
-# 10. BARRA DE HERRAMIENTAS UNIFICADA (EXTREMOS DE LA ENTRADA)
+# 10. HERRAMIENTAS ADJUNTAS COMPACTAS
 # ==========================================
 
 st.markdown("---")
 
-col_left, col_right = st.columns([3, 2])
+col_file, col_voice = st.columns([2, 1])
 
-with col_left:
+with col_file:
     uploaded_file = st.file_uploader(
         "Adjuntar archivo (TXT, Python, JSON, CSV, PDF)",
         type=["txt", "py", "json", "csv", "md", "pdf"],
         label_visibility="collapsed"
     )
 
-with col_right:
-    render_voice_control()
+with col_voice:
+    voice_toolbar()
 
 file_context_text = ""
 if uploaded_file is not None:
@@ -396,7 +408,7 @@ if uploaded_file is not None:
         else:
             file_context_text = file_bytes.decode("utf-8", errors="ignore")
         
-        st.caption(f"Archivo adjunto activo: **{uploaded_file.name}**")
+        st.caption(f"📎 Archivo adjunto: **{uploaded_file.name}**")
     except Exception as e:
         st.error(f"Error al leer el archivo: {e}")
 
