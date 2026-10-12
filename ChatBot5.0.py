@@ -7,10 +7,10 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 # ==========================================
-# 1. METADATOS Y CONFIGURACIÓN DE PÁGINA
+# 1. CONFIGURACIÓN DE PÁGINA
 # ==========================================
 
-APP_VERSION = "v5.0 - Edición Estable ✨"
+APP_VERSION = "v5.0 - Clean & Stable Edition"
 
 st.set_page_config(
     page_title="Friday - Tu Tutora Virtual",
@@ -64,7 +64,7 @@ SYSTEM_PROMPTS = {
 }
 
 # ==========================================
-# 4. ESTILOS CSS CORREGIDOS (SIN ROMPER ICONOS)
+# 4. ESTILOS CSS SEGUROS (SIN ROMPER ICONOS)
 # ==========================================
 
 def load_custom_css(theme: str):
@@ -74,27 +74,25 @@ def load_custom_css(theme: str):
         text_color = "#F1F5F9"
         border_color = "#334155"
         accent_blue = "#38BDF8"
-        input_bg = "#1E293B"
     elif theme == "Claro (Soft Blue)":
         bg_main = "#F8FAFC"
         bg_sidebar = "#F1F5F9"
         text_color = "#0F172A"
         border_color = "#CBD5E1"
         accent_blue = "#0284C7"
-        input_bg = "#FFFFFF"
     else:  # Predeterminado del sistema
         bg_main = "transparent"
         bg_sidebar = "transparent"
         text_color = "inherit"
         border_color = "#CBD5E1"
         accent_blue = "#0284C7"
-        input_bg = "transparent"
 
+    # CSS limpio y acotado para evitar alterar componentes internos de Streamlit
     css_code = f"""<style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
 
-    /* Aplicar fuente solo a párrafos y títulos, respetando fuentes de iconos de Streamlit */
-    p, span, label, h1, h2, h3, h4, h5, h6, input, textarea {{
+    /* Aplicación general de fuente Montserrat de forma segura */
+    html, body, .stApp, p, span, label, h1, h2, h3, h4, h5, h6 {{
         font-family: 'Montserrat', sans-serif !important;
     }}
     
@@ -116,19 +114,7 @@ def load_custom_css(theme: str):
         color: {accent_blue} !important;
         font-weight: 600 !important;
     }}
-    
-    /* Corrección del input del chat en Modo Claro */
-    div[data-testid="stChatInput"] {{
-        background-color: {input_bg} !important;
-        border: 1px solid {border_color} !important;
-        border-radius: 10px;
-    }}
-    
-    div[data-testid="stChatInput"] textarea {{
-        color: {text_color} !important;
-    }}
 
-    /* Botones globales */
     .stButton button {{
         background-color: {accent_blue};
         color: white;
@@ -144,30 +130,28 @@ def load_custom_css(theme: str):
         st.markdown(css_code, unsafe_allow_html=True)
 
 # ==========================================
-# 5. COMPONENTE DE VOZ SVG COMPACTO Y ESTABLE
+# 5. COMPONENTE DE VOZ INDEPENDIENTE Y ESTABLE
 # ==========================================
 
 VOICE_TOOLBAR_HTML = """
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500&display=swap');
   body { margin:0; padding:0; background: transparent; font-family: 'Montserrat', sans-serif; }
-  .voice-bar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+  .v-wrap { display: flex; align-items: center; height: 38px; }
   .v-btn {
     background: transparent;
     border: 1px solid #0284C7;
     border-radius: 6px;
-    padding: 5px 10px;
+    padding: 6px 14px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     color: #0284C7;
+    width: 100%;
+    justify-content: center;
   }
   .v-btn.active {
     background-color: #16A34A;
@@ -176,7 +160,7 @@ VOICE_TOOLBAR_HTML = """
   }
   svg { width: 14px; height: 14px; fill: currentColor; }
 </style>
-<div class="voice-bar">
+<div class="v-wrap">
   <button id="mic-btn" class="v-btn" onclick="toggleVoice()">
     <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20h2v-3.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
     <span id="mic-txt">Dictar voz</span>
@@ -201,7 +185,7 @@ VOICE_TOOLBAR_HTML = """
 
   function toggleVoice() {
     if (!SR) {
-      alert("Navegador no compatible con voz. Usa Chrome o Edge.");
+      alert("Navegador no compatible con voz. Usa Google Chrome o Microsoft Edge.");
       return;
     }
     const btn = document.getElementById("mic-btn");
@@ -349,7 +333,7 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # ==========================================
-# 9. ZONA INFERIOR DE HERRAMIENTAS
+# 9. BARRA SUPERIOR DE ENTRADA (ARCHIVOS Y VOZ)
 # ==========================================
 
 st.markdown("---")
@@ -358,13 +342,13 @@ col_file, col_voice = st.columns([3, 1])
 
 with col_file:
     uploaded_file = st.file_uploader(
-        "Adjuntar archivo de referencia (TXT, Python, JSON, CSV, PDF)",
+        "Adjuntar archivo (TXT, Python, JSON, CSV, PDF)",
         type=["txt", "py", "json", "csv", "md", "pdf"],
         label_visibility="collapsed"
     )
 
 with col_voice:
-    components.html(VOICE_TOOLBAR_HTML, height=35)
+    components.html(VOICE_TOOLBAR_HTML, height=42)
 
 file_context_text = ""
 if uploaded_file is not None:
@@ -378,12 +362,12 @@ if uploaded_file is not None:
         else:
             file_context_text = file_bytes.decode("utf-8", errors="ignore")
         
-        st.caption(f"📎 Archivo adjunto: **{uploaded_file.name}**")
+        st.caption(f"📎 Archivo adjunto activo: **{uploaded_file.name}**")
     except Exception as e:
         st.error(f"Error al leer el archivo: {e}")
 
 # ==========================================
-# 10. ENTRADA Y PROCESAMIENTO
+# 10. ENTRADA DE CHAT Y PROCESAMIENTO
 # ==========================================
 
 if prompt := st.chat_input("Escribe tu consulta aquí..."):
