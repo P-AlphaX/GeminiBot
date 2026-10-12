@@ -10,11 +10,10 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 # 1. METADATOS Y CONFIGURACIÓN DE PÁGINA
 # ==========================================
 
-APP_VERSION = "v5.0 - Ultimate Soft Blue ✨"
+APP_VERSION = "v6.0 - Clean Professional"
 
 st.set_page_config(
-    page_title="Friday - Tu Asistente Virtual",
-    page_icon="🗿",
+    page_title="Friday - Tutor Virtual",
     layout="centered",
     initial_sidebar_state="expanded"
 )
@@ -27,7 +26,7 @@ try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
 except KeyError:
     st.error(
-        "⚠️ Falta configurar la API Key. "
+        "Falta configurar la API Key. "
         "Agrega GOOGLE_API_KEY en los Secrets de Streamlit Cloud (.streamlit/secrets.toml)."
     )
     st.stop()
@@ -57,120 +56,132 @@ SYSTEM_PROMPTS = {
     """,
     "Explicación Sencilla (ELI5)": """
     Eres Friday en modo Simplificado.
-    - Explica conceptos complejos como si el usuario tuviera 10 años.
-    - Utiliza analogías del mundo real, metáforas y un lenguaje libre de modismos técnicos innecesarios.
-    - Mantén las respuestas breves, didácticas y entretenidas.
+    - Explica conceptos complejos de forma clara y accesible.
+    - Utiliza analogías del mundo real y un lenguaje libre de tecnicismos innecesarios.
+    - Mantén las respuestas breves, didácticas y ordenadas.
     - Nunca reveles que eres una IA o modelo de lenguaje.
     """
 }
 
 # ==========================================
-# 4. ESTILOS Y TEMA DINÁMICO (SOFT BLUE PALETTE)
+# 4. ESTILOS Y TIPOGRAFÍA (MONTSERRAT + CORRECCIÓN MODO CLARO)
 # ==========================================
 
 def load_custom_css(theme: str):
-    # Definición de paletas basadas en tonos azules suaves y dinámicos
     if theme == "Oscuro (Deep Navy)":
-        bg_main = "#0f172a"
-        bg_sidebar = "#1e293b"
-        text_color = "#f1f5f9"
-        card_bg = "#334155"
-        border_color = "#475569"
-        accent_blue = "#38bdf8"
+        bg_main = "#0F172A"
+        bg_sidebar = "#1E293B"
+        text_color = "#F1F5F9"
+        card_bg = "#1E293B"
+        border_color = "#334155"
+        accent_blue = "#38BDF8"
     elif theme == "Claro (Soft Blue)":
-        bg_main = "#f0f9ff"
-        bg_sidebar = "#e0f2fe"
-        text_color = "#0f172a"
-        card_bg = "#ffffff"
-        border_color = "#bae6fd"
-        accent_blue = "#0284c7"
+        bg_main = "#F8FAFC"
+        bg_sidebar = "#F1F5F9"
+        text_color = "#1E293B"
+        card_bg = "#FFFFFF"
+        border_color = "#CBD5E1"
+        accent_blue = "#0284C7"
     else:  # Predeterminado del sistema
         bg_main = "transparent"
         bg_sidebar = "transparent"
         text_color = "inherit"
-        card_bg = "rgba(2, 132, 199, 0.05)"
-        border_color = "#7dd3fc"
-        accent_blue = "#0284c7"
+        card_bg = "rgba(2, 132, 199, 0.03)"
+        border_color = "#CBD5E1"
+        accent_blue = "#0284C7"
 
     css = f"""
-    <style>
-        /* Estilos generales */
-        .stApp {{
-            background-color: {bg_main};
-            color: {text_color};
-        }}
-        
-        /* Sidebar personalizado */
-        section[data-testid="stSidebar"] {{
-            background-color: {bg_sidebar};
-            border-right: 1px solid {border_color};
-        }}
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
 
-        /* Tarjetas informativas y contenedores */
-        .custom-card {{
-            background-color: {card_bg};
-            border: 1px solid {border_color};
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            margin-bottom: 15px;
-        }}
-
-        /* Botones principales */
-        .stButton button {{
-            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-            color: white;
-            border-radius: 8px;
-            border: none;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }}
-        .stButton button:hover {{
-            background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
-        }}
-
-        /* Encabezados */
-        h1, h2, h3 {{
-            color: {accent_blue} !important;
-        }}
+    html, body, [class*="st-"], input, textarea, button {{
+        font-family: 'Montserrat', sans-serif !important;
+    }}
+    .stApp {{
+        background-color: {bg_main};
+        color: {text_color};
+    }}
+    section[data-testid="stSidebar"] {{
+        background-color: {bg_sidebar};
+        border-right: 1px solid {border_color};
+    }}
+    /* Asegurar legibilidad perfecta de textos en modo claro */
+    p, span, label, .stMarkdown, .stText, div[data-testid="stMarkdownContainer"] {{
+        color: {text_color} !important;
+    }}
+    h1, h2, h3, h4, h5, h6 {{
+        color: {accent_blue} !important;
+        font-weight: 600 !important;
+    }}
+    .stButton button {{
+        background-color: {accent_blue};
+        color: white;
+        border-radius: 6px;
+        border: none;
+        font-weight: 500;
+        transition: background 0.2s;
+    }}
+    .stButton button:hover {{
+        background-color: #0369A1;
+    }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
 # ==========================================
-# 5. COMPONENTE DE DICTADO DE VOZ
+# 5. COMPONENTE DE DICTADO POR VOZ (SVG LIMPIO)
 # ==========================================
 
-VOICE_HTML = """
+VOICE_TOOLBAR_HTML = """
 <style>
-  body { margin:0; font-family: sans-serif; background: transparent; }
-  .wrap { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  #mic {
-    background:#0284c7; color:#fff; border:none; border-radius:999px;
-    padding:8px 16px; font-size:14px; cursor:pointer; font-weight: 500;
+  .voice-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-family: 'Montserrat', sans-serif;
   }
-  #mic.on { background:#16a34a; animation: pulse 1.2s infinite; }
-  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(22,163,74,.6)} 70%{box-shadow:0 0 0 10px rgba(22,163,74,0)} 100%{box-shadow:0 0 0 0 rgba(22,163,74,0)} }
-  #state { font-size:12px; opacity: 0.8; }
-  #live { width:100%; font-size:13px; opacity: 0.7; min-height:16px; font-style:italic; }
+  .voice-btn {
+    background: transparent;
+    border: 1px solid #CBD5E1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: inherit;
+    transition: all 0.2s;
+  }
+  .voice-btn:hover {
+    background-color: rgba(2, 132, 199, 0.08);
+    border-color: #0284C7;
+  }
+  .voice-btn.active {
+    background-color: #16A34A;
+    color: white;
+    border-color: #16A34A;
+  }
+  .voice-status {
+    font-size: 12px;
+    opacity: 0.7;
+    font-style: italic;
+  }
+  svg { width: 14px; height: 14px; fill: currentColor; }
 </style>
-<div class="wrap">
-  <button id="mic">🎤 Dictar con voz</button>
-  <span id="state">Listo</span>
-  <div id="live"></div>
+<div class="voice-container">
+  <button id="mic-btn" class="voice-btn" onclick="toggleDictation()" title="Dictar mensaje por voz">
+    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20h2v-3.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
+    <span id="mic-text">Dictar por voz</span>
+  </button>
+  <span id="mic-status" class="voice-status"></span>
 </div>
 <script>
-  const LANG = "__LANG__";
-  const AUTO_SEND = __AUTO__;
   const P = window.parent;
-
-  const SR = P.SpeechRecognition || P.webkitSpeechRecognition ||
-             window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  const btn = document.getElementById("mic");
-  const stateEl = document.getElementById("state");
-  const liveEl = document.getElementById("live");
+  const SR = P.SpeechRecognition || P.webkitSpeechRecognition || window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let isListening = false;
 
   function getInput() {
     return P.document.querySelector('textarea[data-testid="stChatInputTextArea"]');
@@ -182,134 +193,120 @@ VOICE_HTML = """
     setter.call(ta, text);
     ta.dispatchEvent(new P.Event("input", { bubbles: true }));
   }
-  function sendInput() {
-    const send = P.document.querySelector('button[data-testid="stChatInputSubmitButton"]');
-    if (send) send.click();
-  }
 
-  if (!SR) {
-    btn.disabled = true;
-    stateEl.textContent = "Navegador sin soporte de voz (usa Chrome/Edge).";
-  } else {
-    const rec = new SR();
-    rec.lang = LANG;
-    rec.continuous = true;
-    rec.interimResults = true;
+  function toggleDictation() {
+    if (!SR) {
+      alert("El navegador no soporta reconocimiento de voz. Utilice Google Chrome o Microsoft Edge.");
+      return;
+    }
+    const btn = document.getElementById("mic-btn");
+    const txt = document.getElementById("mic-text");
+    const status = document.getElementById("mic-status");
 
-    let listening = false;
-    let finalText = "";
+    if (isListening) {
+      recognition.stop();
+      return;
+    }
 
-    rec.onstart = () => {
-      listening = true;
-      btn.classList.add("on");
-      btn.textContent = "⏹️ Detener";
-      stateEl.textContent = "Escuchando...";
+    recognition = new SR();
+    recognition.lang = "es-ES";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let accumulated = getInput() ? getInput().value + " " : "";
+
+    recognition.onstart = () => {
+      isListening = true;
+      btn.classList.add("active");
+      txt.textContent = "Detener voz";
+      status.textContent = "Escuchando...";
     };
 
-    rec.onresult = (event) => {
+    recognition.onresult = (event) => {
       let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) finalText += t + " ";
-        else interim += t;
+      let finalChunk = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalChunk += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
       }
-      const full = (finalText + interim).trim();
-      liveEl.textContent = full ? "📝 " + full : "";
-      setInput(full);
+      if (finalChunk) {
+        accumulated += finalChunk + " ";
+      }
+      setInput((accumulated + interim).trim());
     };
 
-    rec.onerror = (e) => { stateEl.textContent = "⚠️ " + e.error; };
-
-    rec.onend = () => {
-      listening = false;
-      btn.classList.remove("on");
-      btn.textContent = "🎤 Dictar con voz";
-      stateEl.textContent = "Listo";
-      const text = finalText.trim();
-      if (AUTO_SEND && text) setTimeout(sendInput, 350);
-      finalText = "";
-      liveEl.textContent = "";
+    recognition.onerror = (e) => {
+      status.textContent = "Error: " + e.error;
     };
 
-    btn.onclick = () => {
-      if (listening) { rec.stop(); }
-      else { finalText = ""; setInput(""); try { rec.start(); } catch (e) {} }
+    recognition.onend = () => {
+      isListening = false;
+      btn.classList.remove("active");
+      txt.textContent = "Dictar por voz";
+      status.textContent = "";
     };
+
+    try {
+      recognition.start();
+    } catch(err) {
+      console.error(err);
+    }
   }
 </script>
 """
 
-def voice_dictation(lang: str, auto_send: bool):
-    html = (VOICE_HTML
-            .replace("__LANG__", lang)
-            .replace("__AUTO__", "true" if auto_send else "false"))
-    components.html(html, height=85)
+def voice_toolbar():
+    components.html(VOICE_TOOLBAR_HTML, height=45)
 
 # ==========================================
-# 6. PASOS DE ESTADO DINÁMICOS
-# ==========================================
-
-def get_status_steps(mode: str, prompt: str) -> list[str]:
-    p = prompt.lower()
-    steps = ["🧠 Leyendo y procesando tu mensaje..."]
-
-    if mode == "Experto en Programación" or any(w in p for w in ["código", "python", "error", "bug", "función", "script"]):
-        steps += ["💻 Analizando sintaxis y lógica...", "🔍 Buscando optimizaciones y buenas prácticas..."]
-    elif any(w in p for w in ["calcula", "ecuación", "integral", "matemática"]):
-        steps += ["🧮 Analizando planteamiento matemático...", "📐 Resolviendo paso a paso..."]
-    elif mode == "Explicación Sencilla (ELI5)":
-        steps += ["🎈 Creando analogía didáctica...", "✂️ Simplificando conceptos..."]
-    else:
-        steps += ["📚 Consultando bases de conocimiento...", "💡 Estructurando ejemplos..."]
-
-    steps.append("✍️ Escribiendo respuesta final...")
-    return steps
-
-# ==========================================
-# 7. BARRA LATERAL Y CONFIGURACIÓN (v5.0)
+# 6. CONFIGURACIÓN DE LA BARRA LATERAL
 # ==========================================
 
 with st.sidebar:
-    st.title("🤖 Friday Config")
-    st.caption(f"Versión actual: **{APP_VERSION}**")
+    st.title("Panel de Control")
+    st.caption(f"Versión: {APP_VERSION}")
     st.divider()
 
-    # --- Selección de Tema ---
-    st.subheader("🎨 Apariencia")
+    # --- Tema ---
+    st.subheader("Apariencia")
     theme_choice = st.selectbox(
-        "Tema de Interfaz",
+        "Tema de interfaz",
         ["Predeterminado del sistema", "Claro (Soft Blue)", "Oscuro (Deep Navy)"],
-        index=0
+        index=0,
+        label_visibility="collapsed"
     )
     load_custom_css(theme_choice)
 
     st.divider()
 
-    # --- Parámetros del Modelo ---
-    st.subheader("⚙️ Parámetros de IA")
+    # --- Parámetros de Modelo ---
+    st.subheader("Configuración de IA")
     selected_model = st.selectbox(
-        "Modelo Gemini",
+        "Modelo",
         ["gemini-3.6-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
         index=0
     )
     tutor_mode = st.selectbox("Modo de Tutoría", list(SYSTEM_PROMPTS.keys()), index=0)
-    temperature = st.slider("Creatividad (Temperatura)", 0.0, 1.0, 0.7, 0.1)
+    temperature = st.slider("Temperatura", 0.0, 1.0, 0.7, 0.1)
 
     st.divider()
 
-    # --- NUEVO: Cargar Historial Previo (.json) ---
-    st.subheader("📥 Recuperar Chats Previos")
+    # --- Cargar Historial Previo ---
+    st.subheader("Historial de Conversación")
     uploaded_history = st.file_uploader(
-        "Cargar historial JSON",
+        "Cargar archivo JSON previo",
         type=["json"],
-        help="Sube un archivo de exportación anterior para que Friday recuerde la conversación."
+        help="Sube un archivo de exportación anterior para recuperar la sesión."
     )
     if uploaded_history is not None:
         try:
             loaded_msgs = json.load(uploaded_history)
             if isinstance(loaded_msgs, list):
                 st.session_state.messages = loaded_msgs
-                st.success("¡Historial recuperado con éxito!")
+                st.success("Historial recuperado exitosamente.")
                 time.sleep(1)
                 st.rerun()
         except Exception as e:
@@ -317,48 +314,28 @@ with st.sidebar:
 
     st.divider()
 
-    # --- Herramientas de Voz y Estado ---
-    st.subheader("🎤 Configuración de Voz")
-    voice_lang_label = st.selectbox(
-        "Idioma",
-        ["Español (El Salvador)", "Español (España)", "Español (México)", "English (US)"],
-        index=0
-    )
-    VOICE_LANGS = {
-        "Español (El Salvador)": "es-SV",
-        "Español (España)": "es-ES",
-        "Español (México)": "es-MX",
-        "English (US)": "en-US",
-    }
-    voice_lang = VOICE_LANGS[voice_lang_label]
-    auto_send = st.checkbox("Enviar al terminar de dictar", value=True)
-    show_steps = st.checkbox("Mostrar pasos en vivo", value=True)
-
-    st.divider()
-
-    # --- Acciones y Métricas ---
-    st.subheader("🛠️ Acciones")
+    # --- Acciones ---
     col_clear, col_export = st.columns(2)
     with col_clear:
-        if st.button("🗑️ Limpiar", use_container_width=True):
+        if st.button("Limpiar", use_container_width=True):
             st.session_state.messages = []
             st.rerun()
 
     msg_count = len(st.session_state.get("messages", []))
-    st.metric("Mensajes en sesión", msg_count)
+    st.metric("Mensajes", msg_count)
 
     if msg_count > 0:
         export_data = json.dumps(st.session_state.get("messages", []), indent=2, ensure_ascii=False)
         st.download_button(
-            label="📥 Exportar Chat (.json)",
+            label="Exportar JSON",
             data=export_data,
-            file_name="historial_friday_v5.json",
+            file_name="historial_friday.json",
             mime="application/json",
             use_container_width=True
         )
 
 # ==========================================
-# 8. INICIALIZACIÓN DEL MODELO CACHEADO
+# 7. INICIALIZACIÓN DEL MODELO CACHEADO
 # ==========================================
 
 @st.cache_resource
@@ -373,21 +350,21 @@ def get_llm(model_name: str, temp: float):
 llm = get_llm(selected_model, temperature)
 
 # ==========================================
-# 9. ENCABEZADO Y ESTADO INICIAL
+# 8. ENCABEZADO Y ESTADO INICIAL
 # ==========================================
 
-st.title("🤖 Friday, tu tutora virtual")
-st.caption("Versión 5.0 — Asistente inteligente con análisis de archivos, dictado por voz y temas dinámicos.")
+st.title("Friday, tu tutora virtual")
+st.caption("Asistente académica y de programación.")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if len(st.session_state.messages) == 0:
-    welcome_msg = "¡Hola! Soy **Friday**, tu tutora virtual v5.0. ¿Qué tema, código o documento analizaremos hoy?"
+    welcome_msg = "Hola. Soy Friday, tu tutora virtual. ¿En qué tema o proyecto te gustaría trabajar hoy?"
     st.session_state.messages.append({"role": "assistant", "content": welcome_msg})
 
 # ==========================================
-# 10. RENDERIZAR HISTORIAL DE MENSAJES
+# 9. RENDERIZAR HISTORIAL DE MENSAJES
 # ==========================================
 
 for message in st.session_state.messages:
@@ -395,22 +372,23 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # ==========================================
-# 11. NUEVO: ADJUNTAR ARCHIVOS (DOCUMENTOS / CÓDIGO)
+# 10. ADJUNTAR ARCHIVOS Y BARRA DE VOZ
 # ==========================================
 
 st.markdown("---")
-uploaded_file = st.file_uploader(
-    "📎 Adjuntar archivo para análisis (TXT, Python, JSON, CSV, PDF)",
-    type=["txt", "py", "json", "csv", "md", "pdf"],
-    help="Sube un archivo y escribe tu pregunta abajo para que Friday lo analice."
-)
+col_upload, col_space = st.columns([3, 2])
+with col_upload:
+    uploaded_file = st.file_uploader(
+        "Adjuntar archivo de referencia (TXT, Python, JSON, CSV, PDF)",
+        type=["txt", "py", "json", "csv", "md", "pdf"],
+        label_visibility="collapsed"
+    )
 
 file_context_text = ""
 if uploaded_file is not None:
     try:
         file_bytes = uploaded_file.read()
         if uploaded_file.name.endswith(".pdf"):
-            # Lector básico de PDF en texto plano
             import pypdf
             reader = pypdf.PdfReader(io.BytesIO(file_bytes))
             extracted = [page.extract_text() for page in reader.pages if page.extract_text()]
@@ -418,31 +396,28 @@ if uploaded_file is not None:
         else:
             file_context_text = file_bytes.decode("utf-8", errors="ignore")
         
-        st.success(f"📎 Archivo **{uploaded_file.name}** cargado correctamente. Ya puedes consultarle a Friday sobre su contenido.")
+        st.caption(f"Archivo cargado: {uploaded_file.name}")
     except Exception as e:
-        st.error(f"No se pudo leer el archivo: {e}")
+        st.error(f"Error al leer el archivo: {e}")
 
-# Widget de voz sobre el chat
-voice_dictation(voice_lang, auto_send)
+# Renderizar barra de dictado por voz cerca de la entrada
+voice_toolbar()
 
 # ==========================================
-# 12. ENTRADA Y PROCESAMIENTO
+# 11. ENTRADA Y PROCESAMIENTO
 # ==========================================
 
-if prompt := st.chat_input("Escribe tu duda o pregunta sobre el archivo..."):
+if prompt := st.chat_input("Escribe tu consulta aquí..."):
 
-    # Integrar contenido del archivo adjunto al prompt si existe
     final_prompt = prompt
     if file_context_text:
-        final_prompt = f"[Contenido del archivo adjunto '{uploaded_file.name}']:\n{file_context_text}\n\n[Pregunta del usuario]: {prompt}"
-        file_context_text = "" # Limpiar para evitar duplicados en siguientes turnos
+        final_prompt = f"[Contenido del archivo adjunto '{uploaded_file.name}']:\n{file_context_text}\n\n[Consulta]: {prompt}"
+        file_context_text = ""
 
-    # 1. Guardar y renderizar mensaje del usuario
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 2. Construir historial de LangChain
     active_prompt = SYSTEM_PROMPTS[tutor_mode]
     history = [SystemMessage(content=active_prompt)]
 
@@ -452,27 +427,14 @@ if prompt := st.chat_input("Escribe tu duda o pregunta sobre el archivo..."):
         elif message["role"] == "assistant":
             history.append(AIMessage(content=message["content"]))
 
-    # Si hay un prompt enriquecido con archivo, lo añadimos al final del historial actual
     if uploaded_file is not None:
         history[-1] = HumanMessage(content=final_prompt)
 
-    # 3. Generar respuesta streaming con estado visible
     with st.chat_message("assistant"):
-        status_box = None
-        if show_steps:
-            status_box = st.status("🧠 Friday está procesando...", expanded=True)
-            for step in get_status_steps(tutor_mode, prompt)[:-1]:
-                status_box.update(label=step, state="running")
-                status_box.write(step)
-                time.sleep(0.5)
-
         response_placeholder = st.empty()
         full_response = ""
 
         try:
-            if status_box:
-                status_box.update(label="✍️ Escribiendo respuesta...", state="running")
-
             for chunk in llm.stream(history):
                 text = ""
                 if isinstance(chunk.content, list):
@@ -489,14 +451,8 @@ if prompt := st.chat_input("Escribe tu duda o pregunta sobre el archivo..."):
 
             response_placeholder.markdown(full_response)
 
-            if status_box:
-                status_box.update(label="✅ Respuesta lista", state="complete", expanded=False)
-
         except Exception as e:
-            full_response = f"😅 Ups, ocurrió un error al generar la respuesta: `{e}`"
-            if status_box:
-                status_box.update(label="❌ Error en la generación", state="error", expanded=True)
+            full_response = f"Ocurrió un inconveniente al generar la respuesta: `{e}`"
             st.error(full_response)
 
-    # 4. Guardar respuesta del asistente
     st.session_state.messages.append({"role": "assistant", "content": full_response})
