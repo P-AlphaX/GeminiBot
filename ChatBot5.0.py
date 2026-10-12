@@ -10,7 +10,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 # 1. METADATOS Y CONFIGURACIÓN DE PÁGINA
 # ==========================================
 
-APP_VERSION = "v6.1 - Clean Professional UI"
+APP_VERSION = "v6.0 - Clean Professional"
 
 st.set_page_config(
     page_title="Friday - Tutor Virtual",
@@ -64,7 +64,7 @@ SYSTEM_PROMPTS = {
 }
 
 # ==========================================
-# 4. INYECCIÓN CORRECTA DE CSS Y TEMA
+# 4. ESTILOS Y TIPOGRAFÍA (MONTSERRAT + CORRECCIÓN MODO CLARO)
 # ==========================================
 
 def load_custom_css(theme: str):
@@ -72,22 +72,25 @@ def load_custom_css(theme: str):
         bg_main = "#0F172A"
         bg_sidebar = "#1E293B"
         text_color = "#F1F5F9"
+        card_bg = "#1E293B"
         border_color = "#334155"
         accent_blue = "#38BDF8"
     elif theme == "Claro (Soft Blue)":
         bg_main = "#F8FAFC"
         bg_sidebar = "#F1F5F9"
         text_color = "#1E293B"
+        card_bg = "#FFFFFF"
         border_color = "#CBD5E1"
         accent_blue = "#0284C7"
     else:  # Predeterminado del sistema
         bg_main = "transparent"
         bg_sidebar = "transparent"
         text_color = "inherit"
+        card_bg = "rgba(2, 132, 199, 0.03)"
         border_color = "#CBD5E1"
         accent_blue = "#0284C7"
 
-    css_code = f"""<style>
+    css = f"""
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
 
     html, body, [class*="st-"], input, textarea, button {{
@@ -101,6 +104,7 @@ def load_custom_css(theme: str):
         background-color: {bg_sidebar};
         border-right: 1px solid {border_color};
     }}
+    /* Asegurar legibilidad perfecta de textos en modo claro */
     p, span, label, .stMarkdown, .stText, div[data-testid="stMarkdownContainer"] {{
         color: {text_color} !important;
     }}
@@ -119,46 +123,35 @@ def load_custom_css(theme: str):
     .stButton button:hover {{
         background-color: #0369A1;
     }}
-    /* Ocultar margen superior del file uploader para compacitar la barra */
-    div[data-testid="stFileUploader"] {{
-        padding-top: 0px;
-        padding-bottom: 0px;
-    }}
-    </style>"""
-
-    # Uso directo de st.html para inyección segura de CSS sin escapado de texto
-    if hasattr(st, "html"):
-        st.html(css_code)
-    else:
-        st.markdown(css_code, unsafe_allow_html=True)
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
 # ==========================================
-# 5. COMPONENTE DE DICTADO POR VOZ CORREGIDO
+# 5. COMPONENTE DE DICTADO POR VOZ (SVG LIMPIO)
 # ==========================================
 
 VOICE_TOOLBAR_HTML = """
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&display=swap');
-  body { margin:0; padding:0; background: transparent; font-family: 'Montserrat', sans-serif; }
   .voice-container {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 2px;
-    margin-bottom: 2px;
+    margin-bottom: 8px;
+    font-family: 'Montserrat', sans-serif;
   }
   .voice-btn {
     background: transparent;
     border: 1px solid #CBD5E1;
     border-radius: 6px;
-    padding: 6px 14px;
+    padding: 6px 12px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-size: 13px;
     font-weight: 500;
-    color: #0284C7;
+    color: inherit;
     transition: all 0.2s;
   }
   .voice-btn:hover {
@@ -172,9 +165,8 @@ VOICE_TOOLBAR_HTML = """
   }
   .voice-status {
     font-size: 12px;
-    opacity: 0.8;
+    opacity: 0.7;
     font-style: italic;
-    color: #64748B;
   }
   svg { width: 14px; height: 14px; fill: currentColor; }
 </style>
@@ -267,7 +259,7 @@ VOICE_TOOLBAR_HTML = """
 """
 
 def voice_toolbar():
-    components.html(VOICE_TOOLBAR_HTML, height=42)
+    components.html(VOICE_TOOLBAR_HTML, height=45)
 
 # ==========================================
 # 6. CONFIGURACIÓN DE LA BARRA LATERAL
@@ -283,7 +275,8 @@ with st.sidebar:
     theme_choice = st.selectbox(
         "Tema de interfaz",
         ["Predeterminado del sistema", "Claro (Soft Blue)", "Oscuro (Deep Navy)"],
-        index=0
+        index=0,
+        label_visibility="collapsed"
     )
     load_custom_css(theme_choice)
 
@@ -379,22 +372,17 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # ==========================================
-# 10. HERRAMIENTAS ADJUNTAS COMPACTAS
+# 10. ADJUNTAR ARCHIVOS Y BARRA DE VOZ
 # ==========================================
 
 st.markdown("---")
-
-col_file, col_voice = st.columns([2, 1])
-
-with col_file:
+col_upload, col_space = st.columns([3, 2])
+with col_upload:
     uploaded_file = st.file_uploader(
-        "Adjuntar archivo (TXT, Python, JSON, CSV, PDF)",
+        "Adjuntar archivo de referencia (TXT, Python, JSON, CSV, PDF)",
         type=["txt", "py", "json", "csv", "md", "pdf"],
         label_visibility="collapsed"
     )
-
-with col_voice:
-    voice_toolbar()
 
 file_context_text = ""
 if uploaded_file is not None:
@@ -408,9 +396,12 @@ if uploaded_file is not None:
         else:
             file_context_text = file_bytes.decode("utf-8", errors="ignore")
         
-        st.caption(f"📎 Archivo adjunto: **{uploaded_file.name}**")
+        st.caption(f"Archivo cargado: {uploaded_file.name}")
     except Exception as e:
         st.error(f"Error al leer el archivo: {e}")
+
+# Renderizar barra de dictado por voz cerca de la entrada
+voice_toolbar()
 
 # ==========================================
 # 11. ENTRADA Y PROCESAMIENTO
