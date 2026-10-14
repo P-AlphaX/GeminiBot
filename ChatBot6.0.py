@@ -339,7 +339,7 @@ VOICE_HTML = """
 
 def voice_dictation(lang: str):
     html = VOICE_HTML.replace("__LANG__", lang)
-    components.html(html, height=45, allow="microphone")
+    components.html(html, height=45)
 
 # ==========================================
 # 7. BARRA LATERAL Y NAVEGACIÓN
