@@ -40,14 +40,18 @@ def init_db():
 
 init_db()
 
-def hash_pass(p: str): return hashlib.sha256(p.encode()).hexdigest()
+def hash_pass(p: str): 
+    return hashlib.sha256(p.encode()).hexdigest()
 
 def register_user(u, p):
     try:
         conn = sqlite3.connect("friday_v6.db")
         conn.execute("INSERT INTO users (username, password) VALUES (?, ?)", (u, hash_pass(p)))
-        conn.commit(); conn.close(); return True
-    except: return False
+        conn.commit()
+        conn.close()
+        return True
+    except: 
+        return False
 
 def auth_user(u, p):
     conn = sqlite3.connect("friday_v6.db")
@@ -62,60 +66,73 @@ def save_chat(chat_id, user, title, msgs):
         if isinstance(m.get("content"), list):
             text = "".join([p.get("text", "") for p in m["content"] if isinstance(p, dict) and "text" in p])
             safe_msgs.append({"role": m["role"], "content": text if text else "[Contenido Multimedia Analizado]"})
-        else: safe_msgs.append(m)
+        else: 
+            safe_msgs.append(m)
     conn.execute('''INSERT INTO chats (chat_id, username, title, messages, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
                     ON CONFLICT(chat_id) DO UPDATE SET messages=excluded.messages, title=excluded.title, updated_at=CURRENT_TIMESTAMP''', 
                  (chat_id, user, title, json.dumps(safe_msgs, ensure_ascii=False)))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
 
 def get_chats(user):
     conn = sqlite3.connect("friday_v6.db")
     chats = conn.execute("SELECT chat_id, title FROM chats WHERE username = ? ORDER BY updated_at DESC", (user,)).fetchall()
-    conn.close(); return chats
+    conn.close()
+    return chats
 
 def load_chat(chat_id):
     conn = sqlite3.connect("friday_v6.db")
     res = conn.execute("SELECT messages FROM chats WHERE chat_id = ?", (chat_id,)).fetchone()
-    conn.close(); return json.loads(res[0]) if res else []
+    conn.close()
+    return json.loads(res[0]) if res else []
 
 def delete_chat(chat_id):
     conn = sqlite3.connect("friday_v6.db")
     conn.execute("DELETE FROM chats WHERE chat_id = ?", (chat_id,))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
 
 def rename_chat(chat_id, new_title):
     conn = sqlite3.connect("friday_v6.db")
     conn.execute("UPDATE chats SET title = ? WHERE chat_id = ?", (new_title, chat_id))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
 
 def log_usage(user, tokens):
     conn = sqlite3.connect("friday_v6.db")
     conn.execute("INSERT INTO user_stats (username, tokens) VALUES (?, ?)", (user, tokens))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
 
 def get_usage(user, period="all"):
     conn = sqlite3.connect("friday_v6.db")
     query = "SELECT SUM(tokens) FROM user_stats WHERE username = ?"
-    if period == "week": query += " AND date >= date('now', '-7 days')"
-    elif period == "month": query += " AND date >= date('now', '-1 month')"
+    if period == "week": 
+        query += " AND date >= date('now', '-7 days')"
+    elif period == "month": 
+        query += " AND date >= date('now', '-1 month')"
     res = conn.execute(query, (user,)).fetchone()[0]
-    conn.close(); return res if res else 0
+    conn.close()
+    return res if res else 0
 
 def save_file_record(user, filename, ftype):
     conn = sqlite3.connect("friday_v6.db")
     conn.execute("INSERT INTO user_files (file_id, username, filename, file_type) VALUES (?, ?, ?, ?)", (str(uuid.uuid4()), user, filename, ftype))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
 
 def get_user_files(user):
     conn = sqlite3.connect("friday_v6.db")
     files = conn.execute("SELECT filename, file_type, uploaded_at FROM user_files WHERE username = ? ORDER BY uploaded_at DESC", (user,)).fetchall()
-    conn.close(); return files
+    conn.close()
+    return files
 
 def generate_share_link(chat_id):
     link_id = str(uuid.uuid4())[:8]
     conn = sqlite3.connect("friday_v6.db")
     conn.execute("INSERT INTO shared_links (link_id, chat_id) VALUES (?, ?)", (link_id, chat_id))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     return link_id
 
 def import_shared_link(link_id, new_user):
@@ -125,17 +142,23 @@ def import_shared_link(link_id, new_user):
         msgs = load_chat(chat_id[0])
         new_chat_id = str(time.time())
         save_chat(new_chat_id, new_user, f"Importado: {link_id}", msgs)
-        conn.close(); return new_chat_id
-    conn.close(); return None
+        conn.close()
+        return new_chat_id
+    conn.close()
+    return None
 
 # ==========================================
 # 3. API KEY Y LLM
 # ==========================================
-try: API_KEY = st.secrets["GOOGLE_API_KEY"]
-except: st.error("Falta API Key en secrets."); st.stop()
+try: 
+    API_KEY = st.secrets["GOOGLE_API_KEY"]
+except KeyError: 
+    st.error("Falta configurar GOOGLE_API_KEY en los secrets.")
+    st.stop()
 
 @st.cache_resource
-def get_llm(model, temp): return ChatGoogleGenerativeAI(model=model, google_api_key=API_KEY, temperature=temp, streaming=True)
+def get_llm(model, temp): 
+    return ChatGoogleGenerativeAI(model=model, google_api_key=API_KEY, temperature=temp, streaming=True)
 
 # ==========================================
 # 4. CSS VANGUARDISTA CON DEGRADADOS AZULES
@@ -143,13 +166,11 @@ def get_llm(model, temp): return ChatGoogleGenerativeAI(model=model, google_api_
 
 st.markdown("""
 <style>
-    /* Degradado sutil en el fondo general */
     .stApp {
         background: radial-gradient(circle at top right, rgba(2, 132, 199, 0.08), transparent 70%),
                     radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.05), transparent 60%) !important;
     }
 
-    /* Animación de entrada suave para mensajes */
     .stChatMessage {
         animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         opacity: 0;
@@ -161,7 +182,6 @@ st.markdown("""
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Botones con degradado azul uniforme */
     .stButton button {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
@@ -175,7 +195,6 @@ st.markdown("""
         box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3) !important;
     }
 
-    /* Barra de entrada adaptada con borde azulado */
     div[data-testid="stChatInput"] {
         border-radius: 14px !important;
         border: 1px solid rgba(2, 132, 199, 0.35) !important;
@@ -183,11 +202,11 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
 # ==========================================
 # 5. GESTIÓN DE SESIÓN Y LOGIN (PERSISTENTE)
 # ==========================================
 
-# Recuperar usuario desde la URL si la página se refresca
 if "user" not in st.session_state:
     if "session_user" in st.query_params:
         st.session_state.user = st.query_params["session_user"]
@@ -204,7 +223,7 @@ if "used_voice_input" not in st.session_state:
     st.session_state.used_voice_input = False
 
 if st.session_state.user is None:
-    st.title("🤖 Friday, tu tutora virtual")
+    st.title("🤖 Friday, Tu Asistente Virtual")
     st.caption("v6.0 - Inicia sesión para acceder a tu ecosistema inteligente.")
     t1, t2 = st.tabs(["Iniciar Sesión", "Registrarse"])
     
@@ -214,7 +233,7 @@ if st.session_state.user is None:
         if st.button("Entrar", use_container_width=True):
             if auth_user(u, p): 
                 st.session_state.user = u
-                st.query_params["session_user"] = u  # Guarda la sesión en el navegador
+                st.query_params["session_user"] = u
                 st.rerun()
             else: 
                 st.error("Credenciales incorrectas.")
@@ -224,7 +243,6 @@ if st.session_state.user is None:
         np = st.text_input("Nueva Contraseña", type="password", key="r_p")
         if st.button("Crear Cuenta", use_container_width=True):
             if register_user(nu, np): 
-                # Auto-login directo al registrarse
                 st.session_state.user = nu
                 st.query_params["session_user"] = nu
                 st.success("Cuenta creada correctamente. Iniciando sesión...")
@@ -237,6 +255,7 @@ if st.session_state.user is None:
 # ==========================================
 # 6. PROMPTS DEL SISTEMA
 # ==========================================
+
 SYS_PROMPT = """
 Eres Friday (v6.0), una tutora virtual inteligente, empática y avanzada.
 REGLAS:
@@ -256,15 +275,21 @@ with st.sidebar:
     st.caption(f"Usuario: **{st.session_state.user}**")
     
     col_nav1, col_nav2 = st.columns(2)
-    if col_nav1.button("💬 Chat", use_container_width=True): st.session_state.view = "chat"; st.rerun()
-    if col_nav2.button("⚙️ Ajustes", use_container_width=True): st.session_state.view = "ajustes"; st.rerun()
+    if col_nav1.button("💬 Chat", use_container_width=True): 
+        st.session_state.view = "chat"
+        st.rerun()
+    if col_nav2.button("⚙️ Ajustes", use_container_width=True): 
+        st.session_state.view = "ajustes"
+        st.rerun()
 
     st.divider()
 
     if st.session_state.view == "chat":
         st.subheader("Conversaciones (CRUD)")
         if st.button("➕ Nuevo Chat", use_container_width=True):
-            st.session_state.current_chat_id = str(time.time()); st.session_state.messages = []; st.rerun()
+            st.session_state.current_chat_id = str(time.time())
+            st.session_state.messages = []
+            st.rerun()
         
         with st.expander("🔗 Compartir / Importar"):
             if st.button("Generar Link del Chat"):
@@ -274,8 +299,12 @@ with st.sidebar:
             import_code = st.text_input("Pegar código de acceso")
             if st.button("Importar por Link"):
                 new_id = import_shared_link(import_code, st.session_state.user)
-                if new_id: st.session_state.current_chat_id = new_id; st.session_state.messages = load_chat(new_id); st.rerun()
-                else: st.error("Código inválido.")
+                if new_id: 
+                    st.session_state.current_chat_id = new_id
+                    st.session_state.messages = load_chat(new_id)
+                    st.rerun()
+                else: 
+                    st.error("Código inválido.")
 
             up_json = st.file_uploader("Importar JSON", type=["json"])
             if up_json:
@@ -291,20 +320,24 @@ with st.sidebar:
         for c_id, title in get_chats(st.session_state.user):
             c1, c2, c3 = st.columns([6, 2, 2])
             if c1.button(f"{title[:15]}...", key=f"load_{c_id}"):
-                st.session_state.current_chat_id = c_id; st.session_state.messages = load_chat(c_id); st.rerun()
-            if c2.button("✏️", key=f"rn_{c_id}"): st.session_state[f"edit_{c_id}"] = True
-            if c3.button("🗑️", key=f"del_{c_id}"): delete_chat(c_id); st.rerun()
+                st.session_state.current_chat_id = c_id
+                st.session_state.messages = load_chat(c_id)
+                st.rerun()
+            if c2.button("✏️", key=f"rn_{c_id}"): 
+                st.session_state[f"edit_{c_id}"] = True
+            if c3.button("🗑️", key=f"del_{c_id}"): 
+                delete_chat(c_id)
+                st.rerun()
             
             if st.session_state.get(f"edit_{c_id}"):
                 new_t = st.text_input("Nuevo nombre:", key=f"inp_{c_id}")
                 if st.button("Guardar", key=f"sv_{c_id}"):
-                    rename_chat(c_id, new_t); st.session_state[f"edit_{c_id}"] = False; st.rerun()
+                    rename_chat(c_id, new_t)
+                    st.session_state[f"edit_{c_id}"] = False
+                    st.rerun()
 
     st.divider()
 
-    # --- SELECTOR DE MODELOS RECUPERADO ---
-    # --- SELECTOR DE MODELOS ACTUALIZADO ---
-    # --- SELECTOR DE MODELOS VIGENTE ---
     st.subheader("Parámetros de IA")
     selected_model = st.selectbox(
         "Modelo Gemini",
@@ -344,13 +377,75 @@ if st.session_state.view == "ajustes":
     st.subheader("🗄️ Bóveda de Archivos")
     st.caption("Historial de archivos e imágenes compartidas con Friday.")
     files = get_user_files(st.session_state.user)
-    if not files: st.info("No hay archivos registrados todavía.")
+    if not files: 
+        st.info("No hay archivos registrados todavía.")
     for fn, ft, dt in files:
         st.markdown(f"- **{fn}** (`{ft}`) - *{dt}*")
     st.stop()
 
 # ==========================================
-# 9. VISTA DEL CHAT PRINCIPAL
+# 9. FUNCIONES AUXILIARES (DEFINICIONES PREVIAS AL CHAT)
+# ==========================================
+
+def get_action_steps(prompt_text: str, has_file: bool) -> list[str]:
+    p = prompt_text.lower()
+    steps = ["Interpretando consulta y contexto..."]
+    
+    if has_file:
+        steps.append("Extrayendo y procesando documento adjunto...")
+    if any(w in p for w in ["código", "python", "script", "función", "error"]):
+        steps.append("Analizando sintaxis y lógica técnica...")
+    elif any(w in p for w in ["imagen", "genera una foto", "diseña"]):
+        steps.append("Estructurando parámetros para síntesis visual...")
+    elif any(w in p for w in ["resumen", "resume", "sintetiza"]):
+        steps.append("Estructurando puntos clave y síntesis...")
+    else:
+        steps.append("Consultando base de conocimientos...")
+        
+    steps.append("Sintetizando respuesta...")
+    return steps
+
+def speak_female_voice(text: str):
+    clean_text = text.replace('"', '').replace("'", "").replace("\n", " ").replace("*", "").replace("#", "")
+    speech_snippet = clean_text[:300]
+    
+    # Plantilla limpia sin f-string para evitar conflictos en el editor de código
+    tts_template = """
+    <script>
+    (function() {
+        const synth = window.speechSynthesis;
+        if (!synth) return;
+        synth.cancel();
+        
+        const utter = new SpeechSynthesisUtterance("__TEXT__");
+        utter.lang = "es-ES";
+        utter.rate = 1.05;
+        
+        function setVoiceAndSpeak() {
+            const voices = synth.getVoices();
+            const femaleVoice = voices.find(v => 
+                v.lang.startsWith("es") && 
+                (v.name.includes("Female") || v.name.includes("Monica") || v.name.includes("Paulina") || 
+                 v.name.includes("Google español") || v.name.includes("Sabina") || v.name.includes("Helena"))
+            ) || voices.find(v => v.lang.startsWith("es"));
+            
+            if (femaleVoice) utter.voice = femaleVoice;
+            synth.speak(utter);
+        }
+
+        if (synth.getVoices().length !== 0) {
+            setVoiceAndSpeak();
+        } else {
+            synth.onvoiceschanged = setVoiceAndSpeak;
+        }
+    })();
+    </script>
+    """
+    tts_html = tts_template.replace("__TEXT__", speech_snippet)
+    components.html(tts_html, height=0)
+    
+# ==========================================
+# 10. VISTA DEL CHAT PRINCIPAL (HISTORIAL)
 # ==========================================
 
 st.title("🤖 Friday, Tu Asistente Virtual")
@@ -362,15 +457,15 @@ if not st.session_state.messages:
     st.session_state.messages.append({"role": "assistant", "content": f"Hola, {st.session_state.user}. Soy **Friday**. ¿Qué Necesitas?"})
 
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]): st.markdown(msg["content"])
+    with st.chat_message(msg["role"]): 
+        st.markdown(msg["content"])
 
 # ==========================================
-# 9. BARRA DE HERRAMIENTAS UNIFICADA (VOZ DUAL + ARCHIVOS)
+# 11. BARRA DE HERRAMIENTAS UNIFICADA (VOZ DUAL + ARCHIVOS)
 # ==========================================
 
 st.markdown("---")
 
-# Fila de herramientas: Archivos, Dictado en vivo y Grabador Universal
 col_file, col_live_voice, col_toggle_audio = st.columns([5, 2, 2])
 
 with col_file:
@@ -381,7 +476,6 @@ with col_file:
     )
 
 with col_live_voice:
-    # Opción 1: Dictado Web Speech (Escribe en directo en Chrome/Edge/Safari)
     components.html("""
     <div style="display:flex;height:38px;">
       <button id="m" onclick="run()" style="width:100%;border-radius:8px;border:1px solid #0284c7;background:transparent;color:inherit;cursor:pointer;font-size:12px;font-weight:500;">
@@ -396,7 +490,7 @@ with col_live_voice:
 
         window.run = function() {
           if (!SR) {
-            alert("Tu navegador no soporta dictado directo en vivo (como Firefox). Usa el botón 'Nota de voz universal' de al lado para grabar tu audio sin problemas.");
+            alert("Tu navegador no soporta dictado directo en vivo (como Firefox). Usa el botón 'Nota de voz' de al lado para grabar tu audio sin problemas.");
             return;
           }
           let r = new SR();
@@ -440,10 +534,8 @@ with col_live_voice:
     """, height=45)
 
 with col_toggle_audio:
-    # Switch/Botón para desplegar el grabador universal HTML5 si están en Firefox o prefieren grabar audio
     show_recorder = st.toggle("Nota de voz", key="toggle_recorder", help="Grabador compatible con Firefox y cualquier navegador")
 
-# Opción 2: Grabador universal nativo HTML5 (Compatible con Firefox, Safari, iPhone, Android)
 recorded_audio = None
 if show_recorder:
     recorded_audio = st.audio_input("Graba tu consulta por voz (Universal)")
@@ -471,12 +563,12 @@ if up_file:
         st.caption(f"📝 Archivo cargado: {file_name}")
 
 # ==========================================
-# PROCESAMIENTO UNIFICADO DE ENTRADA
+# 12. PROCESAMIENTO UNIFICADO DE ENTRADA (CHAT + MULTIMODAL + AUDIO)
 # ==========================================
 
 prompt = st.chat_input("Escribe tu consulta o pide una imagen...")
 
-# Si el usuario grabó una nota con el componente universal, se toma como la consulta activa
+multimodal_audio_payload = None
 if recorded_audio is not None and not prompt:
     st.session_state.used_voice_input = True
     audio_bytes = recorded_audio.read()
@@ -484,17 +576,13 @@ if recorded_audio is not None and not prompt:
     audio_mime = recorded_audio.type or "audio/wav"
     prompt = "[Nota de voz enviada]"
     
-    # Preparamos el payload multimodal para audio
     multimodal_audio_payload = {
         "type": "media",
         "mime_type": audio_mime,
         "data": b64_audio
     }
-else:
-    multimodal_audio_payload = None
 
 if prompt:
-    # Si el usuario usó dictado o nota de voz, activamos la voz femenina de respuesta
     if recorded_audio is not None:
         st.session_state.used_voice_input = True
 
@@ -511,7 +599,6 @@ if prompt:
     for msg in st.session_state.messages[:-1]:
         history.append(HumanMessage(content=msg["content"]) if msg["role"] == "user" else AIMessage(content=msg["content"]))
 
-    # Construcción multimodal: Imagen, Documento, Audio o Texto puro
     if multimodal_audio_payload:
         history.append(HumanMessage(content=[
             {"type": "text", "text": "Escucha atentamente esta nota de voz y responde de manera precisa y concisa:"},
@@ -552,7 +639,6 @@ if prompt:
             resp_box.markdown(full_r)
             status_box.update(label="Respuesta completada", state="complete", expanded=False)
             
-            # Respuesta oral si la entrada provino de cualquiera de los dos sistemas de voz
             if st.session_state.get("used_voice_input", False):
                 speak_female_voice(full_r)
                 st.session_state.used_voice_input = False
@@ -564,127 +650,3 @@ if prompt:
 
     st.session_state.messages.append({"role": "assistant", "content": full_r})
     save_chat(st.session_state.current_chat_id, st.session_state.user, prompt[:25], st.session_state.messages)
-
-    display_p = f"{prompt}\n\n*[Adjunto: {file_name}]*" if file_name else prompt
-    st.session_state.messages.append({"role": "user", "content": display_p})
-    with st.chat_message("user"): st.markdown(display_p)
-
-    history = [SystemMessage(content=SYS_PROMPT)]
-    for msg in st.session_state.messages[:-1]:
-        history.append(HumanMessage(content=msg["content"]) if msg["role"] == "user" else AIMessage(content=msg["content"]))
-
-    if file_type == "image":
-        history.append(HumanMessage(content=[{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": file_ctx}}]))
-    elif file_type == "text":
-        history.append(HumanMessage(content=f"[Contexto Archivo]:\n{file_ctx}\n\n[Consulta]: {prompt}"))
-    else:
-        history.append(HumanMessage(content=prompt))
-
-    with st.chat_message("assistant"):
-        # Visualizador de pasos en tiempo real
-        status_box = st.status("Procesando...", expanded=True)
-        steps = get_action_steps(prompt, file_ctx is not None)
-        
-        for step in steps[:-1]:
-            status_box.update(label=step, state="running")
-            time.sleep(0.15)  # Breve lapso para fluidez visual sin retrasar la respuesta
-            
-        status_box.update(label=steps[-1], state="running")
-
-        resp_box = st.empty()
-        full_r = ""
-        try:
-            for chunk in llm.stream(history):
-                text = ""
-                if isinstance(chunk.content, list):
-                    text = "".join([p.get("text", "") for p in chunk.content if isinstance(p, dict)])
-                else: 
-                    text = str(chunk.content)
-                full_r += text
-                resp_box.markdown(full_r + "▌")
-            
-            resp_box.markdown(full_r)
-            status_box.update(label="Respuesta completada", state="complete", expanded=False)
-            
-            # Si el usuario utilizó dictado por voz, Friday responde con voz femenina
-            if st.session_state.get("used_voice_input", False):
-                speak_female_voice(full_r)
-                st.session_state.used_voice_input = False  # Resetear indicador
-                
-        except Exception as e:
-            full_r = f"Ocurrió un error: {e}"
-            status_box.update(label="Inconveniente en la ejecución", state="error", expanded=True)
-            st.error(full_r)
-
-    st.session_state.messages.append({"role": "assistant", "content": full_r})
-    save_chat(st.session_state.current_chat_id, st.session_state.user, prompt[:25], st.session_state.messages)
-
-# ==========================================
-# RUTINA DE PASOS DE PROCESAMIENTO
-# ==========================================
-
-def get_action_steps(prompt_text: str, has_file: bool) -> list[str]:
-    p = prompt_text.lower()
-    steps = ["Interpretando consulta y contexto..."]
-    
-    if has_file:
-        steps.append("Extrayendo y procesando documento adjunto...")
-    if any(w in p for w in ["código", "python", "script", "función", "error"]):
-        steps.append("Analizando sintaxis y lógica técnica...")
-    elif any(w in p for w in ["imagen", "genera una foto", "diseña"]):
-        steps.append("Estructurando parámetros para síntesis visual...")
-    elif any(w in p for w in ["resumen", "resume", "sintetiza"]):
-        steps.append("Estructurando puntos clave y síntesis...")
-    else:
-        steps.append("Consultando base de conocimientos...")
-        
-    steps.append("Sintetizando respuesta...")
-    return steps
-
-
-# ==========================================
-# 10. FUNCIÓN AUXILIAR: RESPUESTA ORAL FEMENINA
-# ==========================================
-
-def speak_female_voice(text: str):
-    # Limpieza de código y formato markdown para lectura limpia
-    clean_text = text.replace('"', '').replace("'", "").replace("\n", " ").replace("*", "").replace("#", "")
-    # Se limita a los primeros 300 caracteres para asegurar reproducción inmediata sin demoras
-    speech_snippet = clean_text[:300]
-    
-    tts_html = f"""
-    <script>
-    (function() {{
-        const synth = window.speechSynthesis;
-        if (!synth) return;
-        synth.cancel();
-        
-        const utter = new SpeechSynthesisUtterance("{speech_snippet}");
-        utter.lang = "es-ES";
-        utter.rate = 1.05;
-        
-        function setVoiceAndSpeak() {{
-            const voices = synth.getVoices();
-            // Priorizar voces femeninas del sistema
-            const femaleVoice = voices.find(v => 
-                v.lang.startsWith("es") && 
-                (v.name.includes("Female") || v.name.includes("Monica") || v.name.includes("Paulina") || 
-                 v.name.includes("Google español") || v.name.includes("Sabina") || v.name.includes("Helena"))
-            ) || voices.find(v => v.lang.startsWith("es"));
-            
-            if (femaleVoice) utter.voice = femaleVoice;
-            synth.speak(utter);
-        }}
-
-        if (synth.getVoices().length !== 0) {{
-            setVoiceAndSpeak();
-        }} else {{
-            synth.onvoiceschanged = setVoiceAndSpeak;
-        }}
-    }})();
-    </script>
-    """
-    components.html(tts_html, height=0)
-
-
-
