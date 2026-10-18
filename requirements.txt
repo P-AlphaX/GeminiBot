@@ -1,4 +1,6 @@
 streamlit
 pandas
+langchain-core
 langchain-google-genai
+google-generativeai
 pypdf
