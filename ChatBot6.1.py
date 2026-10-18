@@ -364,28 +364,89 @@ if not st.session_state.messages:
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
+# ==========================================
+# 9. BARRA DE HERRAMIENTAS UNIFICADA (VOZ DUAL + ARCHIVOS)
+# ==========================================
+
 st.markdown("---")
-c_file, c_voice = st.columns([4, 1])
 
-with c_file:
-    up_file = st.file_uploader("Adjuntar archivo o imagen", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "py", "csv", "mp3", "mp4"], label_visibility="collapsed")
+# Fila de herramientas: Archivos, Dictado en vivo y Grabador Universal
+col_file, col_live_voice, col_toggle_audio = st.columns([5, 2, 2])
 
-with c_voice:
+with col_file:
+    up_file = st.file_uploader(
+        "Adjuntar archivo o imagen", 
+        type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "py", "csv"], 
+        label_visibility="collapsed"
+    )
+
+with col_live_voice:
+    # Opción 1: Dictado Web Speech (Escribe en directo en Chrome/Edge/Safari)
     components.html("""
-    <div style="display:flex;height:38px;"><button id="m" onclick="run()" style="width:100%;border-radius:8px;border:1px solid #0284c7;background:transparent;color:inherit;cursor:pointer;">Dictar voz</button></div>
+    <div style="display:flex;height:38px;">
+      <button id="m" onclick="run()" style="width:100%;border-radius:8px;border:1px solid #0284c7;background:transparent;color:inherit;cursor:pointer;font-size:12px;font-weight:500;">
+        🎙️ Dictado en vivo
+      </button>
+    </div>
     <script>
-      const sr=window.parent.SpeechRecognition||window.parent.webkitSpeechRecognition;
-      function run(){
-        if(!sr)return alert('Sin soporte de voz');
-        let r=new sr(); r.lang='es-ES'; r.start();
-        r.onresult=(e)=>{
-          const inp=window.parent.document.querySelector('textarea[data-testid="stChatInputTextArea"]');
-          const set=Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype,"value").set;
-          set.call(inp, e.results[0][0].transcript); inp.dispatchEvent(new window.parent.Event("input",{bubbles:true}));
+      (function() {
+        const P = window.parent;
+        const SR = P.SpeechRecognition || P.webkitSpeechRecognition || window.SpeechRecognition || window.webkitSpeechRecognition;
+        const btn = document.getElementById("m");
+
+        window.run = function() {
+          if (!SR) {
+            alert("Tu navegador no soporta dictado directo en vivo (como Firefox). Usa el botón 'Nota de voz universal' de al lado para grabar tu audio sin problemas.");
+            return;
+          }
+          let r = new SR();
+          r.lang = 'es-ES';
+          r.continuous = false;
+          r.interimResults = true;
+          
+          btn.style.background = '#16a34a';
+          btn.style.color = '#fff';
+          btn.innerText = 'Escuchando...';
+
+          r.onresult = (e) => {
+            let text = "";
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+              text += e.results[i][0].transcript;
+            }
+            const inp = P.document.querySelector('textarea[data-testid="stChatInputTextArea"]');
+            if (inp) {
+              const set = Object.getOwnPropertyDescriptor(P.HTMLTextAreaElement.prototype, "value").set;
+              set.call(inp, text);
+              inp.dispatchEvent(new P.Event("input", { bubbles: true }));
+            }
+          };
+
+          r.onerror = () => {
+            btn.style.background = 'transparent';
+            btn.style.color = 'inherit';
+            btn.innerText = '🎙️ Dictado en vivo';
+          };
+
+          r.onend = () => {
+            btn.style.background = 'transparent';
+            btn.style.color = 'inherit';
+            btn.innerText = '🎙️ Dictado en vivo';
+          };
+
+          r.start();
         };
-      }
+      })();
     </script>
     """, height=45)
+
+with col_toggle_audio:
+    # Switch/Botón para desplegar el grabador universal HTML5 si están en Firefox o prefieren grabar audio
+    show_recorder = st.toggle("Nota de voz", key="toggle_recorder", help="Grabador compatible con Firefox y cualquier navegador")
+
+# Opción 2: Grabador universal nativo HTML5 (Compatible con Firefox, Safari, iPhone, Android)
+recorded_audio = None
+if show_recorder:
+    recorded_audio = st.audio_input("Graba tu consulta por voz (Universal)")
 
 file_ctx, file_type, file_name = None, None, None
 
@@ -487,6 +548,7 @@ def get_action_steps(prompt_text: str, has_file: bool) -> list[str]:
         
     steps.append("Sintetizando respuesta...")
     return steps
+
 
 # ==========================================
 # 10. FUNCIÓN AUXILIAR: RESPUESTA ORAL FEMENINA
