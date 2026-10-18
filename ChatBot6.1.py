@@ -138,22 +138,51 @@ except: st.error("Falta API Key en secrets."); st.stop()
 def get_llm(model, temp): return ChatGoogleGenerativeAI(model=model, google_api_key=API_KEY, temperature=temp, streaming=True)
 
 # ==========================================
-# 4. CSS FLUIDO Y ADAPTATIVO
+# 4. CSS VANGUARDISTA CON DEGRADADOS AZULES
 # ==========================================
 
 st.markdown("""
 <style>
+    /* Degradado sutil en el fondo general */
+    .stApp {
+        background: radial-gradient(circle at top right, rgba(2, 132, 199, 0.08), transparent 70%),
+                    radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.05), transparent 60%) !important;
+    }
+
+    /* Animación de entrada suave para mensajes */
     .stChatMessage {
-        animation: fadeIn 0.3s ease-in-out forwards;
+        animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(8px);
+        border-radius: 12px;
+        margin-bottom: 8px;
     }
     @keyframes fadeIn {
         to { opacity: 1; transform: translateY(0); }
     }
+
+    /* Botones con degradado azul uniforme */
+    .stButton button {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 500 !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    }
+    .stButton button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3) !important;
+    }
+
+    /* Barra de entrada adaptada con borde azulado */
+    div[data-testid="stChatInput"] {
+        border-radius: 14px !important;
+        border: 1px solid rgba(2, 132, 199, 0.35) !important;
+        box-shadow: 0 4px 18px rgba(2, 132, 199, 0.08) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
-
 # ==========================================
 # 5. GESTIÓN DE SESIÓN Y LOGIN (PERSISTENTE)
 # ==========================================
