@@ -428,6 +428,16 @@ if prompt := st.chat_input("Escribe tu consulta o pide una imagen..."):
         history.append(HumanMessage(content=prompt))
 
     with st.chat_message("assistant"):
+        # Visualizador de pasos en tiempo real
+        status_box = st.status("Procesando...", expanded=True)
+        steps = get_action_steps(prompt, file_ctx is not None)
+        
+        for step in steps[:-1]:
+            status_box.update(label=step, state="running")
+            time.sleep(0.15)  # Breve lapso para fluidez visual sin retrasar la respuesta
+            
+        status_box.update(label=steps[-1], state="running")
+
         resp_box = st.empty()
         full_r = ""
         try:
@@ -435,13 +445,92 @@ if prompt := st.chat_input("Escribe tu consulta o pide una imagen..."):
                 text = ""
                 if isinstance(chunk.content, list):
                     text = "".join([p.get("text", "") for p in chunk.content if isinstance(p, dict)])
-                else: text = str(chunk.content)
+                else: 
+                    text = str(chunk.content)
                 full_r += text
                 resp_box.markdown(full_r + "▌")
+            
             resp_box.markdown(full_r)
+            status_box.update(label="Respuesta completada", state="complete", expanded=False)
+            
+            # Si el usuario utilizó dictado por voz, Friday responde con voz femenina
+            if st.session_state.get("used_voice_input", False):
+                speak_female_voice(full_r)
+                st.session_state.used_voice_input = False  # Resetear indicador
+                
         except Exception as e:
             full_r = f"Ocurrió un error: {e}"
+            status_box.update(label="Inconveniente en la ejecución", state="error", expanded=True)
             st.error(full_r)
 
     st.session_state.messages.append({"role": "assistant", "content": full_r})
     save_chat(st.session_state.current_chat_id, st.session_state.user, prompt[:25], st.session_state.messages)
+
+# ==========================================
+# RUTINA DE PASOS DE PROCESAMIENTO
+# ==========================================
+
+def get_action_steps(prompt_text: str, has_file: bool) -> list[str]:
+    p = prompt_text.lower()
+    steps = ["Interpretando consulta y contexto..."]
+    
+    if has_file:
+        steps.append("Extrayendo y procesando documento adjunto...")
+    if any(w in p for w in ["código", "python", "script", "función", "error"]):
+        steps.append("Analizando sintaxis y lógica técnica...")
+    elif any(w in p for w in ["imagen", "genera una foto", "diseña"]):
+        steps.append("Estructurando parámetros para síntesis visual...")
+    elif any(w in p for w in ["resumen", "resume", "sintetiza"]):
+        steps.append("Estructurando puntos clave y síntesis...")
+    else:
+        steps.append("Consultando base de conocimientos...")
+        
+    steps.append("Sintetizando respuesta...")
+    return steps
+
+# ==========================================
+# 10. FUNCIÓN AUXILIAR: RESPUESTA ORAL FEMENINA
+# ==========================================
+
+def speak_female_voice(text: str):
+    # Limpieza de código y formato markdown para lectura limpia
+    clean_text = text.replace('"', '').replace("'", "").replace("\n", " ").replace("*", "").replace("#", "")
+    # Se limita a los primeros 300 caracteres para asegurar reproducción inmediata sin demoras
+    speech_snippet = clean_text[:300]
+    
+    tts_html = f"""
+    <script>
+    (function() {{
+        const synth = window.speechSynthesis;
+        if (!synth) return;
+        synth.cancel();
+        
+        const utter = new SpeechSynthesisUtterance("{speech_snippet}");
+        utter.lang = "es-ES";
+        utter.rate = 1.05;
+        
+        function setVoiceAndSpeak() {{
+            const voices = synth.getVoices();
+            // Priorizar voces femeninas del sistema
+            const femaleVoice = voices.find(v => 
+                v.lang.startsWith("es") && 
+                (v.name.includes("Female") || v.name.includes("Monica") || v.name.includes("Paulina") || 
+                 v.name.includes("Google español") || v.name.includes("Sabina") || v.name.includes("Helena"))
+            ) || voices.find(v => v.lang.startsWith("es"));
+            
+            if (femaleVoice) utter.voice = femaleVoice;
+            synth.speak(utter);
+        }}
+
+        if (synth.getVoices().length !== 0) {{
+            setVoiceAndSpeak();
+        }} else {{
+            synth.onvoiceschanged = setVoiceAndSpeak;
+        }}
+    }})();
+    </script>
+    """
+    components.html(tts_html, height=0)
+
+
+
