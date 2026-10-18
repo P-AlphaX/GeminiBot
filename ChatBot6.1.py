@@ -138,7 +138,7 @@ except: st.error("Falta API Key en secrets."); st.stop()
 def get_llm(model, temp): return ChatGoogleGenerativeAI(model=model, google_api_key=API_KEY, temperature=temp, streaming=True)
 
 # ==========================================
-# 4. CSS FLUIDO Y ADAPTATIVO (NATIVO STREAMLIT)
+# 4. CSS FLUIDO Y ADAPTATIVO
 # ==========================================
 
 st.markdown("""
@@ -195,7 +195,7 @@ REGLAS:
 """
 
 # ==========================================
-# 7. MENÚ LATERAL (CRUD Y NAVEGACIÓN)
+# 7. MENÚ LATERAL (CRUD, CONFIGURACIÓN Y NAVEGACIÓN)
 # ==========================================
 
 with st.sidebar:
@@ -247,6 +247,19 @@ with st.sidebar:
                 if st.button("Guardar", key=f"sv_{c_id}"):
                     rename_chat(c_id, new_t); st.session_state[f"edit_{c_id}"] = False; st.rerun()
 
+    st.divider()
+
+    # --- SELECTOR DE MODELOS RECUPERADO ---
+    st.subheader("Parámetros de IA")
+    selected_model = st.selectbox(
+        "Modelo Gemini",
+        ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-1.5-pro-latest"],
+        index=0
+    )
+    temperature = st.slider("Creatividad (Temperatura)", 0.0, 1.0, 0.7, 0.1)
+
+    st.divider()
+
     if st.button("Cerrar Sesión", use_container_width=True):
         st.session_state.user = None; st.session_state.messages = []; st.rerun()
 
@@ -281,13 +294,13 @@ if st.session_state.view == "ajustes":
 # 9. VISTA DEL CHAT PRINCIPAL
 # ==========================================
 
-st.title("🤖 Friday, tu tutora virtual")
+st.title("🤖 Friday, Tu Asistente Virtual")
 st.caption("Versión 6.0 — Ecosistema Inteligente con Multimodalidad, Bóveda y CRUD.")
 
-llm = get_llm("gemini-1.5-flash", 0.7)
+llm = get_llm(selected_model, temperature)
 
 if not st.session_state.messages:
-    st.session_state.messages.append({"role": "assistant", "content": f"Hola, {st.session_state.user}. Soy **Friday**. ¿Qué documento, imagen o proyecto analizaremos hoy?"})
+    st.session_state.messages.append({"role": "assistant", "content": f"Hola, {st.session_state.user}. Soy **Friday**. ¿Qué Necesitas?"})
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]): st.markdown(msg["content"])
@@ -373,3 +386,5 @@ if prompt := st.chat_input("Escribe tu consulta o pide una imagen..."):
 
     st.session_state.messages.append({"role": "assistant", "content": full_r})
     save_chat(st.session_state.current_chat_id, st.session_state.user, prompt[:25], st.session_state.messages)
+
+<FollowUp>¿Hay algún otro parámetro de configuración que quieras agregar en este panel lateral?</FollowUp>
