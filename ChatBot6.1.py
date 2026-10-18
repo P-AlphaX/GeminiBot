@@ -386,5 +386,3 @@ if prompt := st.chat_input("Escribe tu consulta o pide una imagen..."):
 
     st.session_state.messages.append({"role": "assistant", "content": full_r})
     save_chat(st.session_state.current_chat_id, st.session_state.user, prompt[:25], st.session_state.messages)
-
-<FollowUp>¿Hay algún otro parámetro de configuración que quieras agregar en este panel lateral?</FollowUp>
