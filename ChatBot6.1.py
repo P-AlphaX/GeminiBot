@@ -250,10 +250,11 @@ with st.sidebar:
     st.divider()
 
     # --- SELECTOR DE MODELOS RECUPERADO ---
+    # --- SELECTOR DE MODELOS ACTUALIZADO ---
     st.subheader("Parámetros de IA")
     selected_model = st.selectbox(
         "Modelo Gemini",
-        ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-1.5-pro-latest"],
+        ["gemini-2.0-flash", "gemini-2.0-pro", "gemini-1.5-flash", "gemini-1.5-pro"],
         index=0
     )
     temperature = st.slider("Creatividad (Temperatura)", 0.0, 1.0, 0.7, 0.1)
