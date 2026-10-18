@@ -406,37 +406,63 @@ def get_action_steps(prompt_text: str, has_file: bool) -> list[str]:
     return steps
 
 def speak_female_voice(text: str):
-    clean_text = text.replace('"', '').replace("'", "").replace("\n", " ").replace("*", "").replace("#", "")
-    speech_snippet = clean_text[:300]
-    
-    # Plantilla limpia sin f-string para evitar conflictos en el editor de código
+    clean_text = (
+        text.replace("\\", " ")
+        .replace('"', " ")
+        .replace("'", " ")
+        .replace("\n", " ")
+        .replace("\r", " ")
+        .replace("*", "")
+        .replace("#", "")
+        .replace("`", "")
+    )
+    speech_snippet = clean_text[:350].strip()
+    if not speech_snippet:
+        return
+
     tts_template = """
     <script>
     (function() {
-        const synth = window.speechSynthesis;
-        if (!synth) return;
-        synth.cancel();
-        
-        const utter = new SpeechSynthesisUtterance("__TEXT__");
-        utter.lang = "es-ES";
-        utter.rate = 1.05;
-        
-        function setVoiceAndSpeak() {
-            const voices = synth.getVoices();
-            const femaleVoice = voices.find(v => 
-                v.lang.startsWith("es") && 
-                (v.name.includes("Female") || v.name.includes("Monica") || v.name.includes("Paulina") || 
-                 v.name.includes("Google español") || v.name.includes("Sabina") || v.name.includes("Helena"))
-            ) || voices.find(v => v.lang.startsWith("es"));
+        try {
+            const P = window.parent;
+            const synth = P.speechSynthesis || window.speechSynthesis;
+            if (!synth) return;
             
-            if (femaleVoice) utter.voice = femaleVoice;
-            synth.speak(utter);
-        }
+            synth.cancel();
+            if (synth.paused) {
+                synth.resume();
+            }
+            
+            const utter = new (P.SpeechSynthesisUtterance || window.SpeechSynthesisUtterance)("__TEXT__");
+            utter.lang = "es-ES";
+            utter.rate = 1.05;
+            P._fridayUtter = utter; // Previene recolección de basura prematura en Chromium
 
-        if (synth.getVoices().length !== 0) {
-            setVoiceAndSpeak();
-        } else {
-            synth.onvoiceschanged = setVoiceAndSpeak;
+            function setVoiceAndSpeak() {
+                const voices = synth.getVoices();
+                if (!voices || voices.length === 0) return;
+                const femaleVoice = voices.find(v => 
+                    v.lang.startsWith("es") && 
+                    (v.name.toLowerCase().includes("female") || 
+                     v.name.toLowerCase().includes("monica") || 
+                     v.name.toLowerCase().includes("paulina") || 
+                     v.name.toLowerCase().includes("sabina") || 
+                     v.name.toLowerCase().includes("helena") ||
+                     v.name.toLowerCase().includes("zira") ||
+                     v.name.toLowerCase().includes("google español"))
+                ) || voices.find(v => v.lang.startsWith("es"));
+                
+                if (femaleVoice) utter.voice = femaleVoice;
+                synth.speak(utter);
+            }
+
+            if (synth.getVoices().length !== 0) {
+                setVoiceAndSpeak();
+            } else {
+                synth.onvoiceschanged = setVoiceAndSpeak;
+            }
+        } catch(e) {
+            console.error("Error en la síntesis de voz:", e);
         }
     })();
     </script>
@@ -466,7 +492,7 @@ for msg in st.session_state.messages:
 
 st.markdown("---")
 
-col_file, col_live_voice, col_toggle_audio = st.columns([5, 2, 2])
+col_file, col_live_voice, col_toggle_audio, col_voice_switch = st.columns([4, 2, 2, 2])
 
 with col_file:
     up_file = st.file_uploader(
@@ -510,7 +536,8 @@ with col_live_voice:
             const inp = P.document.querySelector('textarea[data-testid="stChatInputTextArea"]');
             if (inp) {
               const set = Object.getOwnPropertyDescriptor(P.HTMLTextAreaElement.prototype, "value").set;
-              set.call(inp, text);
+              // Marcador discreto de voz para el backend
+              set.call(inp, text + " 🎙️");
               inp.dispatchEvent(new P.Event("input", { bubbles: true }));
             }
           };
@@ -535,6 +562,15 @@ with col_live_voice:
 
 with col_toggle_audio:
     show_recorder = st.toggle("Nota de voz", key="toggle_recorder", help="Grabador compatible con Firefox y cualquier navegador")
+
+with col_voice_switch:
+    voice_active = st.toggle(
+        "🔊 Voz activa", 
+        value=st.session_state.get("voice_active", True), 
+        key="toggle_voice_active", 
+        help="Activa o silencia las respuestas orales de Friday"
+    )
+    st.session_state.voice_active = voice_active
 
 recorded_audio = None
 if show_recorder:
@@ -583,6 +619,11 @@ if recorded_audio is not None and not prompt:
     }
 
 if prompt:
+    # Detectar y limpiar si provino del botón de dictado en vivo
+    if "🎙️" in prompt:
+        st.session_state.used_voice_input = True
+        prompt = prompt.replace("🎙️", "").strip()
+
     if recorded_audio is not None:
         st.session_state.used_voice_input = True
 
@@ -639,7 +680,8 @@ if prompt:
             resp_box.markdown(full_r)
             status_box.update(label="Respuesta completada", state="complete", expanded=False)
             
-            if st.session_state.get("used_voice_input", False):
+            # Solo reproduce si el usuario usó dictado y la voz está activada en el botón
+            if st.session_state.get("voice_active", True) and st.session_state.get("used_voice_input", False):
                 speak_female_voice(full_r)
                 st.session_state.used_voice_input = False
                 
