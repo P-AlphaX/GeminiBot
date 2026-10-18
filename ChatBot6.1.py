@@ -470,8 +470,100 @@ if up_file:
         file_type = "text"
         st.caption(f"📝 Archivo cargado: {file_name}")
 
-if prompt := st.chat_input("Escribe tu consulta o pide una imagen..."):
+# ==========================================
+# PROCESAMIENTO UNIFICADO DE ENTRADA
+# ==========================================
+
+prompt = st.chat_input("Escribe tu consulta o pide una imagen...")
+
+# Si el usuario grabó una nota con el componente universal, se toma como la consulta activa
+if recorded_audio is not None and not prompt:
+    st.session_state.used_voice_input = True
+    audio_bytes = recorded_audio.read()
+    b64_audio = base64.b64encode(audio_bytes).decode("utf-8")
+    audio_mime = recorded_audio.type or "audio/wav"
+    prompt = "[Nota de voz enviada]"
+    
+    # Preparamos el payload multimodal para audio
+    multimodal_audio_payload = {
+        "type": "media",
+        "mime_type": audio_mime,
+        "data": b64_audio
+    }
+else:
+    multimodal_audio_payload = None
+
+if prompt:
+    # Si el usuario usó dictado o nota de voz, activamos la voz femenina de respuesta
+    if recorded_audio is not None:
+        st.session_state.used_voice_input = True
+
     log_usage(st.session_state.user, len(prompt) + (len(file_ctx) if file_ctx else 0))
+
+    display_p = f"{prompt}\n\n*[Adjunto: {file_name}]*" if file_name else prompt
+    st.session_state.messages.append({"role": "user", "content": display_p})
+    with st.chat_message("user"): 
+        st.markdown(display_p)
+        if recorded_audio is not None:
+            st.audio(audio_bytes, format=audio_mime)
+
+    history = [SystemMessage(content=SYS_PROMPT)]
+    for msg in st.session_state.messages[:-1]:
+        history.append(HumanMessage(content=msg["content"]) if msg["role"] == "user" else AIMessage(content=msg["content"]))
+
+    # Construcción multimodal: Imagen, Documento, Audio o Texto puro
+    if multimodal_audio_payload:
+        history.append(HumanMessage(content=[
+            {"type": "text", "text": "Escucha atentamente esta nota de voz y responde de manera precisa y concisa:"},
+            multimodal_audio_payload
+        ]))
+    elif file_type == "image":
+        history.append(HumanMessage(content=[
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": file_ctx}}
+        ]))
+    elif file_type == "text":
+        history.append(HumanMessage(content=f"[Contexto Archivo]:\n{file_ctx}\n\n[Consulta]: {prompt}"))
+    else:
+        history.append(HumanMessage(content=prompt))
+
+    with st.chat_message("assistant"):
+        status_box = st.status("Procesando...", expanded=True)
+        steps = get_action_steps(prompt, file_ctx is not None)
+        
+        for step in steps[:-1]:
+            status_box.update(label=step, state="running")
+            time.sleep(0.12)
+            
+        status_box.update(label=steps[-1], state="running")
+
+        resp_box = st.empty()
+        full_r = ""
+        try:
+            for chunk in llm.stream(history):
+                text = ""
+                if isinstance(chunk.content, list):
+                    text = "".join([p.get("text", "") for p in chunk.content if isinstance(p, dict)])
+                else: 
+                    text = str(chunk.content)
+                full_r += text
+                resp_box.markdown(full_r + "▌")
+            
+            resp_box.markdown(full_r)
+            status_box.update(label="Respuesta completada", state="complete", expanded=False)
+            
+            # Respuesta oral si la entrada provino de cualquiera de los dos sistemas de voz
+            if st.session_state.get("used_voice_input", False):
+                speak_female_voice(full_r)
+                st.session_state.used_voice_input = False
+                
+        except Exception as e:
+            full_r = f"Ocurrió un error: {e}"
+            status_box.update(label="Error en el procesamiento", state="error", expanded=True)
+            st.error(full_r)
+
+    st.session_state.messages.append({"role": "assistant", "content": full_r})
+    save_chat(st.session_state.current_chat_id, st.session_state.user, prompt[:25], st.session_state.messages)
 
     display_p = f"{prompt}\n\n*[Adjunto: {file_name}]*" if file_name else prompt
     st.session_state.messages.append({"role": "user", "content": display_p})
