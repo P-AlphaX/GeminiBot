@@ -17,7 +17,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 APP_VERSION = "v6.0 - Full-Stack Advanced Edition"
 
 st.set_page_config(
-    page_title="Friday - Tu Tutora Virtual",
+    page_title="Friday - Tu Asistente Virtual",
     page_icon="🤖",
     layout="centered",
     initial_sidebar_state="expanded"
@@ -199,7 +199,7 @@ REGLAS:
 # ==========================================
 
 with st.sidebar:
-    st.title("Friday Ecosystem")
+    st.title("Friday Engine")
     st.caption(f"Usuario: **{st.session_state.user}**")
     
     col_nav1, col_nav2 = st.columns(2)
@@ -251,10 +251,11 @@ with st.sidebar:
 
     # --- SELECTOR DE MODELOS RECUPERADO ---
     # --- SELECTOR DE MODELOS ACTUALIZADO ---
+    # --- SELECTOR DE MODELOS VIGENTE ---
     st.subheader("Parámetros de IA")
     selected_model = st.selectbox(
         "Modelo Gemini",
-        ["gemini-3.8-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
+        ["gemini-3.8-flash"],
         index=0
     )
     temperature = st.slider("Creatividad (Temperatura)", 0.0, 1.0, 0.7, 0.1)
