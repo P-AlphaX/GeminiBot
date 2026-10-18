@@ -155,30 +155,54 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. GESTIÓN DE SESIÓN Y LOGIN
+# 5. GESTIÓN DE SESIÓN Y LOGIN (PERSISTENTE)
 # ==========================================
 
-if "user" not in st.session_state: st.session_state.user = None
-if "current_chat_id" not in st.session_state: st.session_state.current_chat_id = str(time.time())
-if "messages" not in st.session_state: st.session_state.messages = []
-if "view" not in st.session_state: st.session_state.view = "chat"
+# Recuperar usuario desde la URL si la página se refresca
+if "user" not in st.session_state:
+    if "session_user" in st.query_params:
+        st.session_state.user = st.query_params["session_user"]
+    else:
+        st.session_state.user = None
+
+if "current_chat_id" not in st.session_state: 
+    st.session_state.current_chat_id = str(time.time())
+if "messages" not in st.session_state: 
+    st.session_state.messages = []
+if "view" not in st.session_state: 
+    st.session_state.view = "chat"
+if "used_voice_input" not in st.session_state:
+    st.session_state.used_voice_input = False
 
 if st.session_state.user is None:
     st.title("🤖 Friday, tu tutora virtual")
     st.caption("v6.0 - Inicia sesión para acceder a tu ecosistema inteligente.")
     t1, t2 = st.tabs(["Iniciar Sesión", "Registrarse"])
+    
     with t1:
         u = st.text_input("Usuario", key="l_u")
         p = st.text_input("Contraseña", type="password", key="l_p")
         if st.button("Entrar", use_container_width=True):
-            if auth_user(u, p): st.session_state.user = u; st.rerun()
-            else: st.error("Credenciales incorrectas.")
+            if auth_user(u, p): 
+                st.session_state.user = u
+                st.query_params["session_user"] = u  # Guarda la sesión en el navegador
+                st.rerun()
+            else: 
+                st.error("Credenciales incorrectas.")
+                
     with t2:
         nu = st.text_input("Nuevo Usuario", key="r_u")
         np = st.text_input("Nueva Contraseña", type="password", key="r_p")
         if st.button("Crear Cuenta", use_container_width=True):
-            if register_user(nu, np): st.success("Cuenta creada. Inicia sesión.")
-            else: st.warning("Usuario ocupado.")
+            if register_user(nu, np): 
+                # Auto-login directo al registrarse
+                st.session_state.user = nu
+                st.query_params["session_user"] = nu
+                st.success("Cuenta creada correctamente. Iniciando sesión...")
+                time.sleep(0.5)
+                st.rerun()
+            else: 
+                st.warning("El nombre de usuario ya está en uso.")
     st.stop()
 
 # ==========================================
@@ -263,7 +287,11 @@ with st.sidebar:
     st.divider()
 
     if st.button("Cerrar Sesión", use_container_width=True):
-        st.session_state.user = None; st.session_state.messages = []; st.rerun()
+        st.session_state.user = None
+        st.session_state.messages = []
+        if "session_user" in st.query_params:
+            del st.query_params["session_user"]
+        st.rerun()
 
 # ==========================================
 # 8. VISTA DE AJUSTES (ESTADÍSTICAS Y ARCHIVOS)
