@@ -254,7 +254,7 @@ with st.sidebar:
     st.subheader("Parámetros de IA")
     selected_model = st.selectbox(
         "Modelo Gemini",
-        ["gemini-2.0-flash", "gemini-2.0-pro", "gemini-1.5-flash", "gemini-1.5-pro"],
+        ["gemini-3.8-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
         index=0
     )
     temperature = st.slider("Creatividad (Temperatura)", 0.0, 1.0, 0.7, 0.1)
