@@ -206,7 +206,12 @@ st.markdown("""
 # ==========================================
 # 5. GESTIÓN DE SESIÓN Y LOGIN (PERSISTENTE)
 # ==========================================
-
+if "voice_active" not in st.session_state:
+    st.session_state.voice_active = True
+if "voice_gender" not in st.session_state:
+    st.session_state.voice_gender = "Femenina"
+if "show_recorder" not in st.session_state:
+    st.session_state.show_recorder = False
 if "user" not in st.session_state:
     if "session_user" in st.query_params:
         st.session_state.user = st.query_params["session_user"]
@@ -291,13 +296,13 @@ with st.sidebar:
             st.session_state.messages = []
             st.rerun()
         
-        with st.expander("🔗 Compartir / Importar"):
-            if st.button("Generar Link del Chat"):
+with st.expander("🔗 Compartir / Importar / Exportar"):
+            if st.button("Generar Link del Chat", use_container_width=True):
                 link = generate_share_link(st.session_state.current_chat_id)
                 st.success(f"Código: **{link}**")
             
             import_code = st.text_input("Pegar código de acceso")
-            if st.button("Importar por Link"):
+            if st.button("Importar por Link", use_container_width=True):
                 new_id = import_shared_link(import_code, st.session_state.user)
                 if new_id: 
                     st.session_state.current_chat_id = new_id
@@ -306,6 +311,19 @@ with st.sidebar:
                 else: 
                     st.error("Código inválido.")
 
+            st.divider()
+
+            # --- EXPORTAR CHAT ACTUAL A JSON ---
+            chat_json = json.dumps(st.session_state.messages, ensure_ascii=False, indent=2)
+            st.download_button(
+                label="📥 Exportar Chat (.json)",
+                data=chat_json,
+                file_name=f"chat_{st.session_state.user}_{st.session_state.current_chat_id[:8]}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+
+            # --- IMPORTAR CHAT DESDE JSON ---
             up_json = st.file_uploader("Importar JSON", type=["json"])
             if up_json:
                 msgs = json.load(up_json)
@@ -355,6 +373,14 @@ with st.sidebar:
             del st.query_params["session_user"]
         st.rerun()
 
+st.divider()
+        st.subheader("Entrada de Audio")
+        st.session_state.show_recorder = st.toggle(
+            "🎙️ Grabar nota de voz",
+            value=st.session_state.show_recorder,
+            help="Habilita el grabador de audio universal compatible con Firefox y cualquier navegador"
+        )
+
 # ==========================================
 # 8. VISTA DE AJUSTES (ESTADÍSTICAS Y ARCHIVOS)
 # ==========================================
@@ -372,6 +398,22 @@ if st.session_state.view == "ajustes":
     
     st.metric("Tokens/Caracteres procesados", f"{tokens:,}")
     st.progress(pct, text=f"Uso de cuota disponible ({int(pct*100)}%)")
+
+    st.divider()
+    st.subheader("🔊 Configuración de Voz")
+    
+    st.session_state.voice_active = st.toggle(
+        "Voz activa",
+        value=st.session_state.voice_active,
+        help="Permite que Friday responda oralmente tras usar dictado o notas de voz"
+    )
+    
+    st.session_state.voice_gender = st.selectbox(
+        "Tono de voz de Friday",
+        ["Femenina", "Masculina"],
+        index=0 if st.session_state.voice_gender == "Femenina" else 1,
+        help="Selecciona si prefieres la voz femenina (por defecto) o masculina"
+    )
 
     st.divider()
     st.subheader("🗄️ Bóveda de Archivos")
@@ -405,7 +447,7 @@ def get_action_steps(prompt_text: str, has_file: bool) -> list[str]:
     steps.append("Sintetizando respuesta...")
     return steps
 
-def speak_female_voice(text: str):
+def speak_voice(text: str, gender: str = "Femenina"):
     clean_text = (
         text.replace("\\", " ")
         .replace('"', " ")
@@ -436,23 +478,43 @@ def speak_female_voice(text: str):
             const utter = new (P.SpeechSynthesisUtterance || window.SpeechSynthesisUtterance)("__TEXT__");
             utter.lang = "es-ES";
             utter.rate = 1.05;
-            P._fridayUtter = utter; // Previene recolección de basura prematura en Chromium
+            P._fridayUtter = utter;
 
             function setVoiceAndSpeak() {
                 const voices = synth.getVoices();
                 if (!voices || voices.length === 0) return;
-                const femaleVoice = voices.find(v => 
-                    v.lang.startsWith("es") && 
-                    (v.name.toLowerCase().includes("female") || 
-                     v.name.toLowerCase().includes("monica") || 
-                     v.name.toLowerCase().includes("paulina") || 
-                     v.name.toLowerCase().includes("sabina") || 
-                     v.name.toLowerCase().includes("helena") ||
-                     v.name.toLowerCase().includes("zira") ||
-                     v.name.toLowerCase().includes("google español"))
-                ) || voices.find(v => v.lang.startsWith("es"));
                 
-                if (femaleVoice) utter.voice = femaleVoice;
+                const esVoices = voices.filter(v => v.lang.startsWith("es"));
+                let selectedVoice = null;
+                const targetGender = "__GENDER__";
+                
+                if (targetGender === "Femenina") {
+                    const fKws = ["female", "mujer", "helena", "laura", "sabina", "monica", "paulina", "elena", "zira", "sofia", "mia", "victoria", "lucia", "carmen", "google español"];
+                    selectedVoice = esVoices.find(v => {
+                        const n = v.name.toLowerCase();
+                        return fKws.some(kw => n.includes(kw));
+                    });
+                    // Si no encuentra una voz femenina explícita, descarta las que son masculinas conocidas
+                    if (!selectedVoice) {
+                        const mKws = ["male", "hombre", "jorge", "raul", "pablo", "david", "alvaro", "carlos", "manuel"];
+                        selectedVoice = esVoices.find(v => {
+                            const n = v.name.toLowerCase();
+                            return !mKws.some(kw => n.includes(kw));
+                        });
+                    }
+                } else {
+                    const mKws = ["male", "hombre", "jorge", "raul", "pablo", "david", "alvaro", "carlos", "manuel", "enrique"];
+                    selectedVoice = esVoices.find(v => {
+                        const n = v.name.toLowerCase();
+                        return mKws.some(kw => n.includes(kw));
+                    });
+                }
+                
+                if (!selectedVoice && esVoices.length > 0) {
+                    selectedVoice = esVoices[0];
+                }
+                
+                if (selectedVoice) utter.voice = selectedVoice;
                 synth.speak(utter);
             }
 
@@ -462,12 +524,12 @@ def speak_female_voice(text: str):
                 synth.onvoiceschanged = setVoiceAndSpeak;
             }
         } catch(e) {
-            console.error("Error en la síntesis de voz:", e);
+            console.error("Error en síntesis de voz:", e);
         }
     })();
     </script>
     """
-    tts_html = tts_template.replace("__TEXT__", speech_snippet)
+    tts_html = tts_template.replace("__TEXT__", speech_snippet).replace("__GENDER__", gender)
     components.html(tts_html, height=0)
     
 # ==========================================
@@ -487,12 +549,12 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # ==========================================
-# 11. BARRA DE HERRAMIENTAS UNIFICADA (VOZ DUAL + ARCHIVOS)
+# 11. BARRA DE HERRAMIENTAS UNIFICADA
 # ==========================================
 
 st.markdown("---")
 
-col_file, col_live_voice, col_toggle_audio, col_voice_switch = st.columns([4, 2, 2, 2])
+col_file, col_live_voice = st.columns([7, 3])
 
 with col_file:
     up_file = st.file_uploader(
@@ -516,7 +578,7 @@ with col_live_voice:
 
         window.run = function() {
           if (!SR) {
-            alert("Tu navegador no soporta dictado directo en vivo (como Firefox). Usa el botón 'Nota de voz' de al lado para grabar tu audio sin problemas.");
+            alert("Tu navegador no soporta dictado directo en vivo. Activa 'Grabar nota de voz' en la barra lateral para grabar tu consulta.");
             return;
           }
           let r = new SR();
@@ -536,7 +598,6 @@ with col_live_voice:
             const inp = P.document.querySelector('textarea[data-testid="stChatInputTextArea"]');
             if (inp) {
               const set = Object.getOwnPropertyDescriptor(P.HTMLTextAreaElement.prototype, "value").set;
-              // Marcador discreto de voz para el backend
               set.call(inp, text + " 🎙️");
               inp.dispatchEvent(new P.Event("input", { bubbles: true }));
             }
@@ -560,20 +621,9 @@ with col_live_voice:
     </script>
     """, height=45)
 
-with col_toggle_audio:
-    show_recorder = st.toggle("Nota de voz", key="toggle_recorder", help="Grabador compatible con Firefox y cualquier navegador")
-
-with col_voice_switch:
-    voice_active = st.toggle(
-        "🔊 Voz activa", 
-        value=st.session_state.get("voice_active", True), 
-        key="toggle_voice_active", 
-        help="Activa o silencia las respuestas orales de Friday"
-    )
-    st.session_state.voice_active = voice_active
-
+# Si el interruptor de la barra lateral está activo, se muestra el grabador
 recorded_audio = None
-if show_recorder:
+if st.session_state.get("show_recorder", False):
     recorded_audio = st.audio_input("Graba tu consulta por voz (Universal)")
 
 file_ctx, file_type, file_name = None, None, None
@@ -597,7 +647,6 @@ if up_file:
         file_ctx = file_bytes.decode('utf-8', errors='ignore')
         file_type = "text"
         st.caption(f"📝 Archivo cargado: {file_name}")
-
 # ==========================================
 # 12. PROCESAMIENTO UNIFICADO DE ENTRADA (CHAT + MULTIMODAL + AUDIO)
 # ==========================================
@@ -682,7 +731,7 @@ if prompt:
             
             # Solo reproduce si el usuario usó dictado y la voz está activada en el botón
             if st.session_state.get("voice_active", True) and st.session_state.get("used_voice_input", False):
-                speak_female_voice(full_r)
+                speak_voice(full_r, st.session_state.get("voice_gender", "Femenina"))
                 st.session_state.used_voice_input = False
                 
         except Exception as e:
