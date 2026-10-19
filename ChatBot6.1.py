@@ -332,8 +332,8 @@ with st.expander("🔗 Compartir / Importar / Exportar"):
                 st.session_state.current_chat_id = new_id
                 st.session_state.messages = msgs
                 st.rerun()
-
-        st.markdown("<br>", unsafe_allow_html=True)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
         
         for c_id, title in get_chats(st.session_state.user):
             c1, c2, c3 = st.columns([6, 2, 2])
