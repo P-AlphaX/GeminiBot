@@ -206,12 +206,14 @@ st.markdown("""
 # ==========================================
 # 5. GESTIÓN DE SESIÓN Y LOGIN (PERSISTENTE)
 # ==========================================
+
 if "voice_active" not in st.session_state:
     st.session_state.voice_active = True
 if "voice_gender" not in st.session_state:
     st.session_state.voice_gender = "Femenina"
 if "show_recorder" not in st.session_state:
     st.session_state.show_recorder = False
+
 if "user" not in st.session_state:
     if "session_user" in st.query_params:
         st.session_state.user = st.query_params["session_user"]
@@ -296,7 +298,7 @@ with st.sidebar:
             st.session_state.messages = []
             st.rerun()
         
-with st.expander("🔗 Compartir / Importar / Exportar"):
+        with st.expander("🔗 Compartir / Importar / Exportar"):
             if st.button("Generar Link del Chat", use_container_width=True):
                 link = generate_share_link(st.session_state.current_chat_id)
                 st.success(f"Código: **{link}**")
@@ -313,7 +315,7 @@ with st.expander("🔗 Compartir / Importar / Exportar"):
 
             st.divider()
 
-            # --- EXPORTAR CHAT ACTUAL A JSON ---
+            # Exportar a JSON
             chat_json = json.dumps(st.session_state.messages, ensure_ascii=False, indent=2)
             st.download_button(
                 label="📥 Exportar Chat (.json)",
@@ -323,7 +325,7 @@ with st.expander("🔗 Compartir / Importar / Exportar"):
                 use_container_width=True
             )
 
-            # --- IMPORTAR CHAT DESDE JSON ---
+            # Importar desde JSON
             up_json = st.file_uploader("Importar JSON", type=["json"])
             if up_json:
                 msgs = json.load(up_json)
@@ -332,8 +334,8 @@ with st.expander("🔗 Compartir / Importar / Exportar"):
                 st.session_state.current_chat_id = new_id
                 st.session_state.messages = msgs
                 st.rerun()
-                
-                st.markdown("<br>", unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
         
         for c_id, title in get_chats(st.session_state.user):
             c1, c2, c3 = st.columns([6, 2, 2])
@@ -354,6 +356,14 @@ with st.expander("🔗 Compartir / Importar / Exportar"):
                     st.session_state[f"edit_{c_id}"] = False
                     st.rerun()
 
+        st.divider()
+        st.subheader("Entrada de Audio")
+        st.session_state.show_recorder = st.toggle(
+            "🎙️ Grabar nota de voz",
+            value=st.session_state.show_recorder,
+            help="Habilita el grabador de audio universal compatible con Firefox y cualquier navegador"
+        )
+
     st.divider()
 
     st.subheader("Parámetros de IA")
@@ -372,14 +382,6 @@ with st.expander("🔗 Compartir / Importar / Exportar"):
         if "session_user" in st.query_params:
             del st.query_params["session_user"]
         st.rerun()
-
-st.divider()
-        st.subheader("Entrada de Audio")
-        st.session_state.show_recorder = st.toggle(
-            "🎙️ Grabar nota de voz",
-            value=st.session_state.show_recorder,
-            help="Habilita el grabador de audio universal compatible con Firefox y cualquier navegador"
-        )
 
 # ==========================================
 # 8. VISTA DE AJUSTES (ESTADÍSTICAS Y ARCHIVOS)
@@ -494,7 +496,6 @@ def speak_voice(text: str, gender: str = "Femenina"):
                         const n = v.name.toLowerCase();
                         return fKws.some(kw => n.includes(kw));
                     });
-                    // Si no encuentra una voz femenina explícita, descarta las que son masculinas conocidas
                     if (!selectedVoice) {
                         const mKws = ["male", "hombre", "jorge", "raul", "pablo", "david", "alvaro", "carlos", "manuel"];
                         selectedVoice = esVoices.find(v => {
@@ -531,7 +532,7 @@ def speak_voice(text: str, gender: str = "Femenina"):
     """
     tts_html = tts_template.replace("__TEXT__", speech_snippet).replace("__GENDER__", gender)
     components.html(tts_html, height=0)
-    
+
 # ==========================================
 # 10. VISTA DEL CHAT PRINCIPAL (HISTORIAL)
 # ==========================================
@@ -621,7 +622,6 @@ with col_live_voice:
     </script>
     """, height=45)
 
-# Si el interruptor de la barra lateral está activo, se muestra el grabador
 recorded_audio = None
 if st.session_state.get("show_recorder", False):
     recorded_audio = st.audio_input("Graba tu consulta por voz (Universal)")
@@ -647,6 +647,7 @@ if up_file:
         file_ctx = file_bytes.decode('utf-8', errors='ignore')
         file_type = "text"
         st.caption(f"📝 Archivo cargado: {file_name}")
+
 # ==========================================
 # 12. PROCESAMIENTO UNIFICADO DE ENTRADA (CHAT + MULTIMODAL + AUDIO)
 # ==========================================
@@ -668,7 +669,6 @@ if recorded_audio is not None and not prompt:
     }
 
 if prompt:
-    # Detectar y limpiar si provino del botón de dictado en vivo
     if "🎙️" in prompt:
         st.session_state.used_voice_input = True
         prompt = prompt.replace("🎙️", "").strip()
@@ -729,7 +729,6 @@ if prompt:
             resp_box.markdown(full_r)
             status_box.update(label="Respuesta completada", state="complete", expanded=False)
             
-            # Solo reproduce si el usuario usó dictado y la voz está activada en el botón
             if st.session_state.get("voice_active", True) and st.session_state.get("used_voice_input", False):
                 speak_voice(full_r, st.session_state.get("voice_gender", "Femenina"))
                 st.session_state.used_voice_input = False
