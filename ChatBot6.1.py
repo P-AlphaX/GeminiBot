@@ -449,89 +449,201 @@ def get_action_steps(prompt_text: str, has_file: bool) -> list[str]:
     steps.append("Sintetizando respuesta...")
     return steps
 
-def speak_voice(text: str, gender: str = "Femenina"):
+def render_voice_player(text: str, gender: str = "Femenina", auto_play: bool = False):
     clean_text = (
         text.replace("\\", " ")
-        .replace('"', " ")
-        .replace("'", " ")
         .replace("\n", " ")
         .replace("\r", " ")
         .replace("*", "")
         .replace("#", "")
         .replace("`", "")
     )
-    speech_snippet = clean_text[:350].strip()
+    speech_snippet = clean_text[:500].strip()
     if not speech_snippet:
         return
 
-    tts_template = """
+    safe_text_json = json.dumps(speech_snippet, ensure_ascii=False)
+    autoplay_str = "true" if auto_play else "false"
+
+    player_template = """
+    <style>
+      body { margin: 0; padding: 0; background: transparent; font-family: sans-serif; overflow: hidden; }
+      .audio-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(2, 132, 199, 0.08);
+        border: 1px solid rgba(2, 132, 199, 0.25);
+        border-radius: 20px;
+        padding: 2px 10px;
+        height: 32px;
+      }
+      .ctl-btn {
+        background: transparent;
+        border: 1px solid #0284c7;
+        color: #0284c7;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 11px;
+        line-height: 1;
+        transition: all 0.2s ease;
+      }
+      .ctl-btn:hover {
+        background: #0284c7;
+        color: white;
+        transform: scale(1.08);
+      }
+      .ctl-btn.stop:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+      }
+      .ctl-label {
+        font-size: 11px;
+        color: #0284c7;
+        font-weight: 500;
+        user-select: none;
+      }
+    </style>
+
+    <div class="audio-pill">
+      <button id="btn-play" class="ctl-btn" title="Reproducir">▶️</button>
+      <button id="btn-stop" class="ctl-btn stop" title="Cortar / Detener">⏹️</button>
+      <span class="ctl-label">Voz de Friday</span>
+    </div>
+
     <script>
-    (function() {
-        try {
-            const P = window.parent;
-            const synth = P.speechSynthesis || window.speechSynthesis;
-            if (!synth) return;
-            
-            synth.cancel();
-            if (synth.paused) {
-                synth.resume();
-            }
-            
-            const utter = new (P.SpeechSynthesisUtterance || window.SpeechSynthesisUtterance)("__TEXT__");
-            utter.lang = "es-ES";
-            utter.rate = 1.05;
-            P._fridayUtter = utter;
+      (function() {
+        const P = window.parent;
+        const synth = P.speechSynthesis || window.speechSynthesis;
+        if (!synth) return;
 
-            function setVoiceAndSpeak() {
-                const voices = synth.getVoices();
-                if (!voices || voices.length === 0) return;
-                
-                const esVoices = voices.filter(v => v.lang.startsWith("es"));
-                let selectedVoice = null;
-                const targetGender = "__GENDER__";
-                
-                if (targetGender === "Femenina") {
-                    const fKws = ["female", "mujer", "helena", "laura", "sabina", "monica", "paulina", "elena", "zira", "sofia", "mia", "victoria", "lucia", "carmen", "google español"];
-                    selectedVoice = esVoices.find(v => {
-                        const n = v.name.toLowerCase();
-                        return fKws.some(kw => n.includes(kw));
-                    });
-                    if (!selectedVoice) {
-                        const mKws = ["male", "hombre", "jorge", "raul", "pablo", "david", "alvaro", "carlos", "manuel"];
-                        selectedVoice = esVoices.find(v => {
-                            const n = v.name.toLowerCase();
-                            return !mKws.some(kw => n.includes(kw));
-                        });
-                    }
-                } else {
-                    const mKws = ["male", "hombre", "jorge", "raul", "pablo", "david", "alvaro", "carlos", "manuel", "enrique"];
-                    selectedVoice = esVoices.find(v => {
-                        const n = v.name.toLowerCase();
-                        return mKws.some(kw => n.includes(kw));
-                    });
-                }
-                
-                if (!selectedVoice && esVoices.length > 0) {
-                    selectedVoice = esVoices[0];
-                }
-                
-                if (selectedVoice) utter.voice = selectedVoice;
-                synth.speak(utter);
-            }
+        const rawText = __TEXT__;
+        const targetGender = "__GENDER__";
+        const autoPlay = __AUTOPLAY__;
 
-            if (synth.getVoices().length !== 0) {
-                setVoiceAndSpeak();
-            } else {
-                synth.onvoiceschanged = setVoiceAndSpeak;
+        const btnPlay = document.getElementById("btn-play");
+        const btnStop = document.getElementById("btn-stop");
+
+        let isSpeaking = false;
+        let isPaused = false;
+        let utter = null;
+
+        function getVoice() {
+          const voices = synth.getVoices();
+          if (!voices || voices.length === 0) return null;
+          const esVoices = voices.filter(v => v.lang.startsWith("es"));
+          let selected = null;
+          if (targetGender === "Femenina") {
+            const fKws = ["female", "mujer", "helena", "laura", "sabina", "monica", "paulina", "elena", "zira", "sofia", "mia", "victoria", "lucia", "carmen", "google español"];
+            selected = esVoices.find(v => fKws.some(kw => v.name.toLowerCase().includes(kw)));
+            if (!selected) {
+              const mKws = ["male", "hombre", "jorge", "raul", "pablo", "david", "alvaro", "carlos", "manuel"];
+              selected = esVoices.find(v => !mKws.some(kw => v.name.toLowerCase().includes(kw)));
             }
-        } catch(e) {
-            console.error("Error en síntesis de voz:", e);
+          } else {
+            const mKws = ["male", "hombre", "jorge", "raul", "pablo", "david", "alvaro", "carlos", "manuel", "enrique"];
+            selected = esVoices.find(v => mKws.some(kw => v.name.toLowerCase().includes(kw)));
+          }
+          return selected || esVoices[0] || null;
         }
-    })();
+
+        function startSpeaking() {
+          synth.cancel();
+          if (synth.paused) synth.resume();
+
+          utter = new (P.SpeechSynthesisUtterance || window.SpeechSynthesisUtterance)(rawText);
+          utter.lang = "es-ES";
+          utter.rate = 1.05;
+          P._fridayUtter = utter;
+
+          const voice = getVoice();
+          if (voice) utter.voice = voice;
+
+          utter.onstart = function() {
+            isSpeaking = true;
+            isPaused = false;
+            btnPlay.innerHTML = "⏸️";
+            btnPlay.title = "Pausar";
+          };
+
+          utter.onpause = function() {
+            isPaused = true;
+            btnPlay.innerHTML = "▶️";
+            btnPlay.title = "Reanudar";
+          };
+
+          utter.onresume = function() {
+            isPaused = false;
+            btnPlay.innerHTML = "⏸️";
+            btnPlay.title = "Pausar";
+          };
+
+          utter.onend = function() {
+            isSpeaking = false;
+            isPaused = false;
+            btnPlay.innerHTML = "▶️";
+            btnPlay.title = "Reproducir de nuevo";
+          };
+
+          utter.onerror = function() {
+            isSpeaking = false;
+            isPaused = false;
+            btnPlay.innerHTML = "▶️";
+            btnPlay.title = "Reproducir";
+          };
+
+          synth.speak(utter);
+        }
+
+        btnPlay.onclick = function() {
+          if (isSpeaking && !isPaused) {
+            synth.pause();
+            isPaused = true;
+            btnPlay.innerHTML = "▶️";
+            btnPlay.title = "Reanudar";
+          } else if (isSpeaking && isPaused) {
+            synth.resume();
+            isPaused = false;
+            btnPlay.innerHTML = "⏸️";
+            btnPlay.title = "Pausar";
+          } else {
+            startSpeaking();
+          }
+        };
+
+        btnStop.onclick = function() {
+          synth.cancel();
+          isSpeaking = false;
+          isPaused = false;
+          btnPlay.innerHTML = "▶️";
+          btnPlay.title = "Reproducir";
+        };
+
+        if (autoPlay) {
+          if (synth.getVoices().length !== 0) {
+            startSpeaking();
+          } else {
+            synth.onvoiceschanged = function() {
+              if (!isSpeaking) startSpeaking();
+            };
+          }
+        }
+      })();
     </script>
     """
-    tts_html = tts_template.replace("__TEXT__", speech_snippet).replace("__GENDER__", gender)
-    components.html(tts_html, height=0)
+
+    final_html = (
+        player_template
+        .replace("__TEXT__", safe_text_json)
+        .replace("__GENDER__", gender)
+        .replace("__AUTOPLAY__", autoplay_str)
+    )
+    components.html(final_html, height=38)
 
 # ==========================================
 # 10. VISTA DEL CHAT PRINCIPAL (HISTORIAL)
@@ -548,6 +660,12 @@ if not st.session_state.messages:
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]): 
         st.markdown(msg["content"])
+        if msg["role"] == "assistant":
+            render_voice_player(
+                msg["content"], 
+                gender=st.session_state.get("voice_gender", "Femenina"), 
+                auto_play=False
+            )
 
 # ==========================================
 # 11. BARRA DE HERRAMIENTAS UNIFICADA
@@ -729,9 +847,16 @@ if prompt:
             resp_box.markdown(full_r)
             status_box.update(label="Respuesta completada", state="complete", expanded=False)
             
-            if st.session_state.get("voice_active", True) and st.session_state.get("used_voice_input", False):
-                speak_voice(full_r, st.session_state.get("voice_gender", "Femenina"))
-                st.session_state.used_voice_input = False
+            should_autoplay = (
+                st.session_state.get("voice_active", True) and 
+                st.session_state.get("used_voice_input", False)
+            )
+            render_voice_player(
+                full_r, 
+                gender=st.session_state.get("voice_gender", "Femenina"), 
+                auto_play=should_autoplay
+            )
+            st.session_state.used_voice_input = False
                 
         except Exception as e:
             full_r = f"Ocurrió un error: {e}"
